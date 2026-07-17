@@ -376,14 +376,19 @@ export function DaySheet({
         {mode === 'paste' && (
           <div className="space-y-3">
             <p className="text-sm text-slate-500">
-              粘贴快捷指令 JSON，或「热量 650kcal | 蛋白 45g | 碳水 60g | 脂肪 18g」
+              粘贴小仓鼠日历备注（含「食物 / 热量 / 蛋白质…」），或 JSON
             </p>
             <textarea
               value={pasteText}
               onChange={(e) => setPasteText(e.target.value)}
-              rows={5}
+              rows={6}
               className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-sm outline-none focus:border-orange-500 dark:border-white/10 dark:bg-[#1c1c1e]"
-              placeholder='{"meal":"lunch","name":"鸡胸饭","calories":650,"protein":45,"carbs":60,"fat":18}'
+              placeholder={`午餐：摄入热量 700 kcal
+食物：7只蒸虾
+热量：700kcal
+碳水：10g
+蛋白质：40g
+脂肪：20g`}
             />
             {pasteError && <p className="text-sm text-red-500">{pasteError}</p>}
             <div className="flex gap-2">

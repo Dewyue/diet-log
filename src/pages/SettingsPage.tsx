@@ -392,17 +392,21 @@ export default function SettingsPage() {
       </section>
 
       <section className="space-y-3 rounded-2xl border border-black/5 bg-white p-4 dark:border-white/10 dark:bg-[#1c1c1e]">
-        <h2 className="font-medium">快捷指令 / 单餐导入</h2>
+        <h2 className="font-medium">快捷指令 / 小仓鼠日历导入</h2>
         <p className="text-sm text-slate-500">
-          粘贴 AI 识别结果 JSON，或键值文本。也可在日历页用
-          <code className="mx-1 text-xs">?import=...</code>
-          深链导入。
+          支持「小仓鼠 Ai 记账」写入日历的备注格式。可粘贴标题+备注，或下方用 ICS
+          批量导入「每日用餐」日历。
         </p>
         <textarea
           value={mealImportText}
           onChange={(e) => setMealImportText(e.target.value)}
-          rows={3}
-          placeholder='{"date":"2026-07-17","meal":"lunch","name":"鸡胸饭","calories":650,"protein":45,"carbs":60,"fat":18}'
+          rows={6}
+          placeholder={`午餐：摄入热量 700 kcal
+食物：7只蒸虾
+热量：700kcal
+碳水：10g
+蛋白质：40g
+脂肪：20g`}
           className="w-full rounded-xl border border-black/10 bg-transparent px-3 py-2 text-xs outline-none focus:border-orange-500 dark:border-white/10"
         />
         <button
@@ -416,10 +420,10 @@ export default function SettingsPage() {
       </section>
 
       <section className="space-y-3 rounded-2xl border border-black/5 bg-white p-4 dark:border-white/10 dark:bg-[#1c1c1e]">
-        <h2 className="font-medium">日历 ICS 导入</h2>
+        <h2 className="font-medium">日历 ICS 导入（小仓鼠 / 每日用餐）</h2>
         <p className="text-sm text-slate-500">
-          从「日历」导出 .ics，或粘贴 ICS 文本。事件建议格式：标题「午餐 · 鸡胸饭」，备注「热量
-          650kcal | 蛋白 45g | 碳水 60g | 脂肪 18g」。
+          iPhone：日历 →「每日用餐」→ 分享/导出日历为 .ics，或复制事件备注粘贴上方。网页会解析标题「午餐：摄入热量
+          xxx」与备注里的食物/热量/三大营养素。
         </p>
         <input
           ref={icsRef}
