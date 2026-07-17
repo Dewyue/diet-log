@@ -214,7 +214,7 @@ export default function SettingsPage() {
       <section className="space-y-3 rounded-2xl bg-white p-4 dark:bg-[#1c1c1e]">
         <h2 className="text-[15px] font-semibold">食物数据库</h2>
         <p className="text-xs leading-relaxed text-slate-500">
-          点「估算」会依次查：本地常用 →{' '}
+          点「估算」优先查{' '}
           <a
             className="text-orange-500"
             href="https://world.openfoodfacts.org"
@@ -223,7 +223,8 @@ export default function SettingsPage() {
           >
             Open Food Facts
           </a>
-          （免 Key）→ USDA（可选 Key）→ Gemini 兜底。
+          {' '}
+          + USDA；找不到再用本地常用与 Gemini 兜底。
         </p>
         <label className="block">
           <span className="mb-1 block text-xs text-slate-500">

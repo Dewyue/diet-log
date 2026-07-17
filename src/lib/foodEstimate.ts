@@ -230,18 +230,7 @@ export async function estimateFoodNutrition(query: string): Promise<EstimateResu
   const trimmed = query.trim()
   if (!trimmed) throw new Error('请先填写食物名称')
 
-  const local = estimateFromLocal(trimmed)
-  if (local) {
-    // Still fetch DB hits so user can switch to packaged product data
-    let candidates: FoodCandidate[] = []
-    try {
-      candidates = await searchFoodDatabases(trimmed)
-    } catch {
-      // ignore network errors when local already matched
-    }
-    return { primary: local, candidates }
-  }
-
+  // Prefer public food databases (more complete) when online
   try {
     const candidates = await searchFoodDatabases(trimmed)
     if (candidates.length > 0) {
@@ -260,10 +249,19 @@ export async function estimateFoodNutrition(query: string): Promise<EstimateResu
       }
     }
   } catch (err) {
-    // fall through to AI
+    // fall through to local / AI
+    const local = estimateFromLocal(trimmed)
+    if (local) {
+      return { primary: local, candidates: [] }
+    }
     if (!hasVisionApiKey()) {
       throw err instanceof Error ? err : new Error('数据库查询失败')
     }
+  }
+
+  const local = estimateFromLocal(trimmed)
+  if (local) {
+    return { primary: local, candidates: [] }
   }
 
   if (!hasVisionApiKey()) {
