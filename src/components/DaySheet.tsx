@@ -14,6 +14,7 @@ import {
   type FoodEntry,
   type MealType,
 } from '../types'
+import { estimateFoodNutrition } from '../lib/foodEstimate'
 import DayProgress from './DayProgress'
 
 function guessMeal(): MealType {
@@ -47,7 +48,7 @@ function roundEnergy(n: number) {
 }
 
 function EntryForm({ date, initial, onDone, onCancel }: EntryFormProps) {
-  const calRef = useRef<HTMLInputElement>(null)
+  const nameRef = useRef<HTMLInputElement>(null)
   const [meal, setMeal] = useState<MealType>(initial?.meal ?? guessMeal())
   const [name, setName] = useState(initial?.name ?? '')
   const [unit, setUnit] = useState<'kcal' | 'kJ'>('kcal')
@@ -63,10 +64,12 @@ function EntryForm({ date, initial, onDone, onCancel }: EntryFormProps) {
   const [carbs, setCarbs] = useState(initial?.carbs ? String(initial.carbs) : '')
   const [fat, setFat] = useState(initial?.fat ? String(initial.fat) : '')
   const [error, setError] = useState('')
+  const [hint, setHint] = useState('')
   const [saving, setSaving] = useState(false)
+  const [estimating, setEstimating] = useState(false)
 
   useEffect(() => {
-    const t = window.setTimeout(() => calRef.current?.focus(), 50)
+    const t = window.setTimeout(() => nameRef.current?.focus(), 50)
     return () => window.clearTimeout(t)
   }, [])
 
@@ -101,7 +104,6 @@ function EntryForm({ date, initial, onDone, onCancel }: EntryFormProps) {
       return
     }
     setError('')
-    // Label energy is almost always kJ on CN/EU packs; convert then scale by grams
     const totalKj = (per * g) / 100
     const totalKcal = roundEnergy(kjToKcal(totalKj))
     setUnit('kcal')
@@ -109,11 +111,35 @@ function EntryForm({ date, initial, onDone, onCancel }: EntryFormProps) {
     setShowLabelCalc(false)
   }
 
+  const handleEstimate = async () => {
+    setError('')
+    setHint('')
+    setEstimating(true)
+    try {
+      const result = await estimateFoodNutrition(name)
+      setName(result.name)
+      setUnit('kcal')
+      setEnergy(String(result.calories))
+      setProtein(String(result.protein))
+      setCarbs(String(result.carbs))
+      setFat(String(result.fat))
+      setHint(
+        result.source === 'local'
+          ? '已按常见份量估算，可再改'
+          : 'AI 估算，仅供参考，可再改',
+      )
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '估算失败')
+    } finally {
+      setEstimating(false)
+    }
+  }
+
   const handleSubmit = async () => {
     setError('')
     const raw = Number(energy)
     if (!raw || raw <= 0) {
-      setError('请填写热量')
+      setError('请填写热量，或点「估算」')
       return
     }
     const caloriesNum =
@@ -174,6 +200,42 @@ function EntryForm({ date, initial, onDone, onCancel }: EntryFormProps) {
       </div>
 
       <div>
+        <span className="mb-1.5 block text-xs font-medium text-slate-400">
+          吃了什么
+        </span>
+        <div className="flex gap-2">
+          <input
+            ref={nameRef}
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value)
+              setHint('')
+            }}
+            placeholder="例如 鸡胸饭、蒸虾"
+            enterKeyHint="go"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                void handleEstimate()
+              }
+            }}
+            className="min-w-0 flex-1 rounded-2xl bg-white px-4 py-3.5 text-[17px] outline-none ring-orange-500 focus:ring-2 dark:bg-[#2c2c2e]"
+          />
+          <button
+            type="button"
+            onClick={() => void handleEstimate()}
+            disabled={estimating || !name.trim()}
+            className="shrink-0 rounded-2xl bg-orange-500 px-4 text-[15px] font-semibold text-white disabled:opacity-40"
+          >
+            {estimating ? '…' : '估算'}
+          </button>
+        </div>
+        {hint && (
+          <p className="mt-1.5 text-center text-xs text-slate-400">{hint}</p>
+        )}
+      </div>
+
+      <div>
         <div className="mb-1.5 flex items-center justify-between">
           <span className="text-xs font-medium text-slate-400">热量</span>
           <div className="flex rounded-lg bg-slate-100 p-0.5 dark:bg-slate-800">
@@ -196,12 +258,11 @@ function EntryForm({ date, initial, onDone, onCancel }: EntryFormProps) {
         </div>
         <div className="relative">
           <input
-            ref={calRef}
             type="number"
             inputMode="decimal"
             value={energy}
             onChange={(e) => setEnergy(e.target.value)}
-            placeholder="0"
+            placeholder="估算后自动填，也可手改"
             enterKeyHint="next"
             className="w-full rounded-2xl bg-white px-4 py-4 pr-14 text-3xl font-semibold tracking-tight outline-none ring-orange-500 focus:ring-2 dark:bg-[#2c2c2e]"
           />
@@ -273,19 +334,6 @@ function EntryForm({ date, initial, onDone, onCancel }: EntryFormProps) {
           </div>
         )}
       </div>
-
-      <label className="block">
-        <span className="mb-1.5 block text-xs font-medium text-slate-400">
-          吃了什么（可空）
-        </span>
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder={`例如 鸡胸饭（空则记为「${MEAL_LABELS[meal]}」）`}
-          enterKeyHint="next"
-          className="w-full rounded-2xl bg-white px-4 py-3.5 text-[17px] outline-none ring-orange-500 focus:ring-2 dark:bg-[#2c2c2e]"
-        />
-      </label>
 
       <div>
         <p className="mb-1.5 text-xs font-medium text-slate-400">宏量（可空）</p>

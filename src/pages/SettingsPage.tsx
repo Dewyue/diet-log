@@ -14,6 +14,11 @@ import {
 } from '../lib/backup'
 import { useTargets } from '../hooks/useEntries'
 import {
+  loadVisionSettings,
+  saveVisionSettings,
+  type VisionSettings,
+} from '../lib/visionSettings'
+import {
   DEFAULT_TARGETS,
   MEAL_LABELS,
   MEAL_TYPES,
@@ -25,12 +30,14 @@ export default function SettingsPage() {
   const fileRef = useRef<HTMLInputElement>(null)
   const currentTargets = useTargets()
   const [targets, setTargets] = useState<DailyTargets>(DEFAULT_TARGETS)
+  const [vision, setVision] = useState<VisionSettings>(() => loadVisionSettings())
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
   const [storageBackend, setStorageBackend] = useState('')
 
   useEffect(() => {
     setStorageBackend(getStorageBackend())
+    setVision(loadVisionSettings())
   }, [])
 
   useEffect(() => {
@@ -198,6 +205,34 @@ export default function SettingsPage() {
           className="w-full rounded-2xl bg-orange-500 py-3.5 text-[15px] font-semibold text-white disabled:opacity-50"
         >
           保存
+        </button>
+      </section>
+
+      <section className="space-y-3 rounded-2xl bg-white p-4 dark:bg-[#1c1c1e]">
+        <h2 className="text-[15px] font-semibold">名称估算（可选）</h2>
+        <p className="text-xs leading-relaxed text-slate-500">
+          常见食物可离线估算。遇到库里没有的，填免费 Gemini Key 后点「估算」即可。
+        </p>
+        <input
+          type="password"
+          autoComplete="off"
+          value={vision.apiKey}
+          onChange={(e) => setVision((v) => ({ ...v, apiKey: e.target.value }))}
+          placeholder="Gemini API Key（可空）"
+          className="w-full rounded-xl bg-slate-50 px-3 py-3 text-sm outline-none ring-orange-500 focus:ring-2 dark:bg-slate-800"
+        />
+        <button
+          type="button"
+          onClick={() => {
+            saveVisionSettings({
+              provider: 'gemini',
+              apiKey: vision.apiKey.trim(),
+            })
+            showMessage(vision.apiKey.trim() ? '已保存估算 Key' : '已清空 Key')
+          }}
+          className="w-full rounded-xl bg-slate-100 py-3 text-sm font-medium dark:bg-slate-800"
+        >
+          保存 Key
         </button>
       </section>
 
