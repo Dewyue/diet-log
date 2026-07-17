@@ -31,13 +31,32 @@ interface EntryFormProps {
   onCancel: () => void
 }
 
+/** Nutrition labels use 1 kcal = 4.184 kJ */
+const KJ_PER_KCAL = 4.184
+
+function kjToKcal(kj: number) {
+  return kj / KJ_PER_KCAL
+}
+
+function kcalToKj(kcal: number) {
+  return kcal * KJ_PER_KCAL
+}
+
+function roundEnergy(n: number) {
+  return Math.round(n * 10) / 10
+}
+
 function EntryForm({ date, initial, onDone, onCancel }: EntryFormProps) {
   const calRef = useRef<HTMLInputElement>(null)
   const [meal, setMeal] = useState<MealType>(initial?.meal ?? guessMeal())
   const [name, setName] = useState(initial?.name ?? '')
-  const [calories, setCalories] = useState(
+  const [unit, setUnit] = useState<'kcal' | 'kJ'>('kcal')
+  const [energy, setEnergy] = useState(
     initial?.calories ? String(initial.calories) : '',
   )
+  const [showLabelCalc, setShowLabelCalc] = useState(false)
+  const [per100, setPer100] = useState('')
+  const [grams, setGrams] = useState('')
   const [protein, setProtein] = useState(
     initial?.protein ? String(initial.protein) : '',
   )
@@ -51,13 +70,54 @@ function EntryForm({ date, initial, onDone, onCancel }: EntryFormProps) {
     return () => window.clearTimeout(t)
   }, [])
 
+  const energyNum = Number(energy)
+  const kcalPreview =
+    energyNum > 0
+      ? unit === 'kcal'
+        ? energyNum
+        : roundEnergy(kjToKcal(energyNum))
+      : 0
+
+  const switchUnit = (next: 'kcal' | 'kJ') => {
+    if (next === unit) return
+    const n = Number(energy)
+    if (n > 0) {
+      setEnergy(
+        String(
+          next === 'kJ'
+            ? Math.round(kcalToKj(n))
+            : roundEnergy(kjToKcal(n)),
+        ),
+      )
+    }
+    setUnit(next)
+  }
+
+  const applyLabelCalc = () => {
+    const per = Number(per100)
+    const g = Number(grams)
+    if (!per || per <= 0 || !g || g <= 0) {
+      setError('请填写每100g热量和实际克数')
+      return
+    }
+    setError('')
+    // Label energy is almost always kJ on CN/EU packs; convert then scale by grams
+    const totalKj = (per * g) / 100
+    const totalKcal = roundEnergy(kjToKcal(totalKj))
+    setUnit('kcal')
+    setEnergy(String(totalKcal))
+    setShowLabelCalc(false)
+  }
+
   const handleSubmit = async () => {
     setError('')
-    const caloriesNum = Number(calories)
-    if (!caloriesNum || caloriesNum <= 0) {
+    const raw = Number(energy)
+    if (!raw || raw <= 0) {
       setError('请填写热量')
       return
     }
+    const caloriesNum =
+      unit === 'kcal' ? raw : roundEnergy(kjToKcal(raw))
 
     const trimmed = name.trim() || MEAL_LABELS[meal]
     const payload = {
@@ -113,26 +173,106 @@ function EntryForm({ date, initial, onDone, onCancel }: EntryFormProps) {
         ))}
       </div>
 
-      <label className="block">
-        <span className="mb-1.5 block text-xs font-medium text-slate-400">
-          热量
-        </span>
+      <div>
+        <div className="mb-1.5 flex items-center justify-between">
+          <span className="text-xs font-medium text-slate-400">热量</span>
+          <div className="flex rounded-lg bg-slate-100 p-0.5 dark:bg-slate-800">
+            {(['kcal', 'kJ'] as const).map((u) => (
+              <button
+                key={u}
+                type="button"
+                onClick={() => switchUnit(u)}
+                className={[
+                  'rounded-md px-2.5 py-1 text-[11px] font-semibold',
+                  unit === u
+                    ? 'bg-white text-orange-500 shadow-sm dark:bg-slate-600'
+                    : 'text-slate-400',
+                ].join(' ')}
+              >
+                {u}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="relative">
           <input
             ref={calRef}
             type="number"
-            inputMode="numeric"
-            value={calories}
-            onChange={(e) => setCalories(e.target.value)}
+            inputMode="decimal"
+            value={energy}
+            onChange={(e) => setEnergy(e.target.value)}
             placeholder="0"
             enterKeyHint="next"
-            className="w-full rounded-2xl bg-white px-4 py-4 text-3xl font-semibold tracking-tight outline-none ring-orange-500 focus:ring-2 dark:bg-[#2c2c2e]"
+            className="w-full rounded-2xl bg-white px-4 py-4 pr-14 text-3xl font-semibold tracking-tight outline-none ring-orange-500 focus:ring-2 dark:bg-[#2c2c2e]"
           />
           <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-400">
-            kcal
+            {unit}
           </span>
         </div>
-      </label>
+        {unit === 'kJ' && kcalPreview > 0 && (
+          <p className="mt-1.5 text-center text-sm text-slate-400">
+            ≈ <span className="font-medium text-orange-500">{kcalPreview}</span> kcal
+          </p>
+        )}
+        <button
+          type="button"
+          onClick={() => setShowLabelCalc((v) => !v)}
+          className="mt-2 w-full text-center text-xs font-medium text-orange-500"
+        >
+          {showLabelCalc ? '收起成分表换算' : '成分表：每100g → 换算'}
+        </button>
+        {showLabelCalc && (
+          <div className="mt-2 space-y-2 rounded-2xl bg-white p-3 dark:bg-[#2c2c2e]">
+            <p className="text-[11px] leading-relaxed text-slate-400">
+              包装上写的「每100克 / kJ」，再填你吃了多少克
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <label className="block">
+                <span className="mb-1 block text-[11px] text-slate-400">
+                  每100g (kJ)
+                </span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  value={per100}
+                  onChange={(e) => setPer100(e.target.value)}
+                  placeholder="如 1650"
+                  className="w-full rounded-xl bg-slate-50 px-3 py-2.5 text-base font-semibold outline-none ring-orange-500 focus:ring-2 dark:bg-slate-800"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-[11px] text-slate-400">
+                  吃了 (g)
+                </span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  value={grams}
+                  onChange={(e) => setGrams(e.target.value)}
+                  placeholder="如 80"
+                  className="w-full rounded-xl bg-slate-50 px-3 py-2.5 text-base font-semibold outline-none ring-orange-500 focus:ring-2 dark:bg-slate-800"
+                />
+              </label>
+            </div>
+            {Number(per100) > 0 && Number(grams) > 0 && (
+              <p className="text-center text-xs text-slate-500">
+                ≈{' '}
+                <span className="font-semibold text-orange-500">
+                  {roundEnergy(kjToKcal((Number(per100) * Number(grams)) / 100))}
+                </span>{' '}
+                kcal
+              </p>
+            )}
+            <button
+              type="button"
+              onClick={applyLabelCalc}
+              className="w-full rounded-xl bg-orange-500/10 py-2.5 text-sm font-semibold text-orange-500"
+            >
+              填入热量
+            </button>
+          </div>
+        )}
+      </div>
 
       <label className="block">
         <span className="mb-1.5 block text-xs font-medium text-slate-400">
