@@ -29,6 +29,11 @@ import {
   type VisionSettings,
 } from '../lib/visionSettings'
 import {
+  buildAutosaveImportUrl,
+  loadAutoClipboardImport,
+  saveAutoClipboardImport,
+} from '../lib/autoImport'
+import {
   DEFAULT_TARGETS,
   MEAL_LABELS,
   MEAL_TYPES,
@@ -42,6 +47,7 @@ export default function SettingsPage() {
   const currentTargets = useTargets()
   const [targets, setTargets] = useState<DailyTargets>(DEFAULT_TARGETS)
   const [vision, setVision] = useState<VisionSettings>(() => loadVisionSettings())
+  const [autoClipboard, setAutoClipboard] = useState(() => loadAutoClipboardImport())
   const [message, setMessage] = useState('')
   const [importMode, setImportMode] = useState<'merge' | 'replace'>('merge')
   const [busy, setBusy] = useState(false)
@@ -53,6 +59,7 @@ export default function SettingsPage() {
   useEffect(() => {
     setStorageBackend(getStorageBackend())
     setVision(loadVisionSettings())
+    setAutoClipboard(loadAutoClipboardImport())
   }, [])
 
   useEffect(() => {
@@ -87,6 +94,28 @@ export default function SettingsPage() {
     clearVisionSettings()
     setVision({ provider: 'gemini', apiKey: '' })
     showMessage('已清除拍照识别配置')
+  }
+
+  const handleToggleAutoClipboard = (enabled: boolean) => {
+    setAutoClipboard(enabled)
+    saveAutoClipboardImport(enabled)
+    showMessage(enabled ? '已开启剪贴板自动导入' : '已关闭剪贴板自动导入')
+  }
+
+  const handleCopyShortcutUrlHint = async () => {
+    const sample = `午餐：摄入热量 700 kcal
+食物：7只蒸虾
+热量：700kcal
+碳水：10g
+蛋白质：40g
+脂肪：20g`
+    const url = buildAutosaveImportUrl(sample)
+    try {
+      await navigator.clipboard.writeText(url)
+      showMessage('已复制自动写入示例链接（可对照快捷指令）')
+    } catch {
+      showMessage(url.slice(0, 80) + '…')
+    }
   }
 
   const toggleRequiredMeal = (meal: MealType) => {
@@ -330,6 +359,52 @@ export default function SettingsPage() {
           className="w-full rounded-xl bg-orange-500 py-3 text-sm font-medium text-white disabled:opacity-50"
         >
           保存目标
+        </button>
+      </section>
+
+      <section className="space-y-3 rounded-2xl border border-black/5 bg-white p-4 dark:border-white/10 dark:bg-[#1c1c1e]">
+        <h2 className="font-medium">自动同步（推荐）</h2>
+        <p className="text-sm text-slate-500">
+          网页无法在后台偷偷读苹果日历。最省事的做法：让快捷指令在写完日历后，自动打开本页并写入。
+        </p>
+
+        <div className="rounded-xl bg-slate-50 px-3 py-3 text-xs leading-relaxed text-slate-600 dark:bg-[#2c2c2e] dark:text-slate-300">
+          <p className="font-medium text-slate-800 dark:text-slate-100">方案 A · 一键同步今日（新建快捷指令）</p>
+          <ol className="mt-2 list-decimal space-y-1 pl-4">
+            <li>获取日历事件：日历选「每日用餐」，时间选「今天」</li>
+            <li>重复：对每个事件，文本 = 标题 + 换行 + 备注；多条之间用一行 <code>---</code> 分隔</li>
+            <li>URL：先「编码」上述文本，再拼到
+              <br />
+              <code className="break-all">
+                https://dewyue.github.io/diet-log/?autosave=1&amp;import=
+              </code>
+            </li>
+            <li>打开 URL → 自动写入，已存在的不重复加</li>
+          </ol>
+          <p className="mt-3 font-medium text-slate-800 dark:text-slate-100">方案 B · 剪贴板自动导入</p>
+          <ol className="mt-2 list-decimal space-y-1 pl-4">
+            <li>在小仓鼠指令末尾自己加一步「复制到剪贴板」（标题+备注）</li>
+            <li>打开饮食日志（建议加到主屏幕）</li>
+            <li>下方开关打开后，检测到备注格式会自动写入</li>
+          </ol>
+        </div>
+
+        <label className="flex items-center justify-between gap-3 text-sm">
+          <span className="text-slate-600 dark:text-slate-300">打开时从剪贴板自动导入</span>
+          <input
+            type="checkbox"
+            checked={autoClipboard}
+            onChange={(e) => handleToggleAutoClipboard(e.target.checked)}
+            className="h-4 w-4 accent-orange-500"
+          />
+        </label>
+
+        <button
+          type="button"
+          onClick={handleCopyShortcutUrlHint}
+          className="w-full rounded-xl border border-black/10 py-3 text-sm font-medium dark:border-white/10"
+        >
+          复制自动写入示例链接
         </button>
       </section>
 

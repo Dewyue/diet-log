@@ -357,6 +357,13 @@ export function parseImportText(text: string, defaultDate?: string): ParsedMealD
     return parseIcsMeals(trimmed)
   }
 
+  // Multiple meals separated by --- (for Shortcuts batch sync)
+  if (/\n\s*---\s*\n/.test(trimmed)) {
+    return trimmed
+      .split(/\n\s*---\s*\n/)
+      .flatMap((chunk) => parseImportText(chunk.trim(), defaultDate))
+  }
+
   try {
     const data = JSON.parse(trimmed) as unknown
     if (Array.isArray(data)) {
