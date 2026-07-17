@@ -111,7 +111,10 @@ function draftFromPartial(
   }
 }
 
-export function parseJsonMeal(text: string): ParsedMealDraft | null {
+export function parseJsonMeal(
+  text: string,
+  source: EntrySource = 'shortcut',
+): ParsedMealDraft | null {
   try {
     const data = JSON.parse(text) as Record<string, unknown>
     if (!data || typeof data !== 'object' || Array.isArray(data)) return null
@@ -132,7 +135,7 @@ export function parseJsonMeal(text: string): ParsedMealDraft | null {
         carbs: typeof data.carbs === 'number' ? data.carbs : Number(data.carbs),
         fat: typeof data.fat === 'number' ? data.fat : Number(data.fat),
       },
-      'shortcut',
+      source,
       text,
     )
   } catch {

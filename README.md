@@ -80,6 +80,12 @@ https://dewyue.github.io/diet-log/?import=<URL编码后的JSON>
 
 Safari「快捷指令」里可用「URL」+「编码」动作生成链接，再「打开 URL」。网页会弹出确认表单，保存后写入本地。
 
-### 为什么 v1 不做网页内嵌拍照识别
+## 网页内拍照识别
 
-静态站点无法安全保管 API Key；你已有可靠的手机端识别链路，导入比重建更划算。后续若需要，可在设置里自填视觉模型 Key 作为可选能力。
+1. 打开 **设置 → 拍照识别热量**
+2. 选择 **Gemini**（推荐）或 **OpenAI**，填入自己的 API Key 并保存  
+   - Gemini：https://aistudio.google.com/apikey  
+   - OpenAI：https://platform.openai.com/api-keys  
+3. 在某日详情点 **拍照识别热量** → 拍照或选图 → 核对预填结果后保存
+
+Key 只存在本机浏览器；识别时图片会直接发给对应云端模型（不经过本站服务器）。估算结果仅供参考，请人工确认后再写入。

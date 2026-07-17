@@ -22,6 +22,13 @@ import {
 } from '../lib/importParse'
 import { useTargets } from '../hooks/useEntries'
 import {
+  clearVisionSettings,
+  loadVisionSettings,
+  saveVisionSettings,
+  type VisionProvider,
+  type VisionSettings,
+} from '../lib/visionSettings'
+import {
   DEFAULT_TARGETS,
   MEAL_LABELS,
   MEAL_TYPES,
@@ -34,6 +41,7 @@ export default function SettingsPage() {
   const icsRef = useRef<HTMLInputElement>(null)
   const currentTargets = useTargets()
   const [targets, setTargets] = useState<DailyTargets>(DEFAULT_TARGETS)
+  const [vision, setVision] = useState<VisionSettings>(() => loadVisionSettings())
   const [message, setMessage] = useState('')
   const [importMode, setImportMode] = useState<'merge' | 'replace'>('merge')
   const [busy, setBusy] = useState(false)
@@ -44,6 +52,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     setStorageBackend(getStorageBackend())
+    setVision(loadVisionSettings())
   }, [])
 
   useEffect(() => {
@@ -64,6 +73,20 @@ export default function SettingsPage() {
     } finally {
       setBusy(false)
     }
+  }
+
+  const handleSaveVision = () => {
+    saveVisionSettings({
+      provider: vision.provider,
+      apiKey: vision.apiKey.trim(),
+    })
+    showMessage(vision.apiKey.trim() ? '拍照识别配置已保存' : '已清空 API Key')
+  }
+
+  const handleClearVision = () => {
+    clearVisionSettings()
+    setVision({ provider: 'gemini', apiKey: '' })
+    showMessage('已清除拍照识别配置')
   }
 
   const toggleRequiredMeal = (meal: MealType) => {
@@ -307,6 +330,64 @@ export default function SettingsPage() {
           className="w-full rounded-xl bg-orange-500 py-3 text-sm font-medium text-white disabled:opacity-50"
         >
           保存目标
+        </button>
+      </section>
+
+      <section className="space-y-3 rounded-2xl border border-black/5 bg-white p-4 dark:border-white/10 dark:bg-[#1c1c1e]">
+        <h2 className="font-medium">拍照识别热量</h2>
+        <p className="text-sm text-slate-500">
+          Key 只存在本机浏览器，不会上传到本站服务器。调用时图片会发给所选模型提供商。推荐
+          Gemini（有免费额度）。
+        </p>
+
+        <div className="flex rounded-xl bg-slate-100 p-1 dark:bg-slate-800">
+          {(
+            [
+              ['gemini', 'Gemini'],
+              ['openai', 'OpenAI'],
+            ] as const
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setVision((v) => ({ ...v, provider: id as VisionProvider }))}
+              className={[
+                'flex-1 rounded-lg py-2 text-sm',
+                vision.provider === id ? 'bg-white shadow dark:bg-slate-600' : '',
+              ].join(' ')}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <label className="block">
+          <span className="mb-1 block text-xs text-slate-500">API Key</span>
+          <input
+            type="password"
+            autoComplete="off"
+            value={vision.apiKey}
+            onChange={(e) => setVision((v) => ({ ...v, apiKey: e.target.value }))}
+            placeholder={
+              vision.provider === 'gemini' ? 'AIza…（Google AI Studio）' : 'sk-…（OpenAI）'
+            }
+            className="w-full rounded-xl border border-black/10 bg-transparent px-3 py-2.5 text-sm outline-none focus:border-orange-500 dark:border-white/10"
+          />
+        </label>
+
+        <button
+          type="button"
+          onClick={handleSaveVision}
+          className="w-full rounded-xl bg-orange-500 py-3 text-sm font-medium text-white"
+        >
+          保存识别配置
+        </button>
+        <button
+          type="button"
+          onClick={handleClearVision}
+          className="w-full rounded-xl border border-black/10 py-3 text-sm font-medium dark:border-white/10"
+        >
+          清除 Key
         </button>
       </section>
 

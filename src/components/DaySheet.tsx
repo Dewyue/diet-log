@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import {
   addEntry,
   deleteEntry,
@@ -8,6 +8,8 @@ import {
 import { formatDisplayDate } from '../lib/dates'
 import { computeDailyStatus } from '../lib/dailyStatus'
 import { parseImportText, type ParsedMealDraft } from '../lib/importParse'
+import { hasVisionApiKey } from '../lib/visionSettings'
+import { recognizeFoodFromImage } from '../lib/visionRecognize'
 import { useEntriesByDate, useTargets } from '../hooks/useEntries'
 import {
   MEAL_LABELS,
@@ -217,6 +219,9 @@ export function DaySheet({
   const [draft, setDraft] = useState<ParsedMealDraft | null>(initialDraft ?? null)
   const [pasteText, setPasteText] = useState('')
   const [pasteError, setPasteError] = useState('')
+  const [photoBusy, setPhotoBusy] = useState(false)
+  const [photoError, setPhotoError] = useState('')
+  const photoRef = useRef<HTMLInputElement>(null)
 
   const grouped = useMemo(() => {
     const map = new Map<MealType, FoodEntry[]>()
@@ -250,6 +255,26 @@ export function DaySheet({
     setDraft(first)
     setMode('add')
     setPasteText('')
+  }
+
+  const handlePhotoPick = async (file: File | undefined) => {
+    if (!file) return
+    setPhotoError('')
+    if (!hasVisionApiKey()) {
+      setPhotoError('请先到「设置」填写视觉 API Key（Gemini 或 OpenAI）')
+      return
+    }
+    setPhotoBusy(true)
+    try {
+      const result = await recognizeFoodFromImage(file, date)
+      setDraft(result)
+      setMode('add')
+    } catch (err) {
+      setPhotoError(err instanceof Error ? err.message : '识别失败')
+    } finally {
+      setPhotoBusy(false)
+      if (photoRef.current) photoRef.current.value = ''
+    }
   }
 
   return (
@@ -306,6 +331,26 @@ export function DaySheet({
               <p className="py-4 text-center text-sm text-slate-400">暂无记录</p>
             )}
 
+            {photoError && <p className="text-sm text-red-500">{photoError}</p>}
+
+            <input
+              ref={photoRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={(e) => handlePhotoPick(e.target.files?.[0])}
+            />
+
+            <button
+              type="button"
+              onClick={() => photoRef.current?.click()}
+              disabled={photoBusy}
+              className="w-full rounded-xl bg-orange-500 py-3 text-sm font-medium text-white disabled:opacity-50"
+            >
+              {photoBusy ? '识别中…' : '拍照识别热量'}
+            </button>
+
             <div className="flex gap-2">
               <button
                 type="button"
@@ -313,9 +358,9 @@ export function DaySheet({
                   setDraft(null)
                   setMode('add')
                 }}
-                className="flex-1 rounded-xl bg-orange-500 py-3 text-sm font-medium text-white"
+                className="flex-1 rounded-xl border border-black/10 bg-white py-3 text-sm font-medium dark:border-white/10 dark:bg-[#1c1c1e]"
               >
-                + 手动添加
+                手动添加
               </button>
               <button
                 type="button"
