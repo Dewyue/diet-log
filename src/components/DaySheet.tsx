@@ -14,7 +14,7 @@ import {
   type FoodEntry,
   type MealType,
 } from '../types'
-import { estimateFoodNutrition } from '../lib/foodEstimate'
+import { estimateFoodNutrition, type FoodCandidate } from '../lib/foodEstimate'
 import DayProgress from './DayProgress'
 
 function guessMeal(): MealType {
@@ -37,6 +37,17 @@ function caloriesFromMacros(protein: number, carbs: number, fat: number) {
   return Math.round(protein * 4 + carbs * 4 + fat * 9)
 }
 
+function sourceLabel(source: string, basis?: string) {
+  const map: Record<string, string> = {
+    local: '本地常用',
+    openfoodfacts: 'Open Food Facts',
+    usda: 'USDA',
+    ai: 'AI 估算',
+  }
+  const base = map[source] ?? source
+  return basis ? `${base} · ${basis}` : base
+}
+
 function EntryForm({ date, initial, onDone, onCancel }: EntryFormProps) {
   const nameRef = useRef<HTMLInputElement>(null)
   const [meal, setMeal] = useState<MealType>(initial?.meal ?? guessMeal())
@@ -48,6 +59,7 @@ function EntryForm({ date, initial, onDone, onCancel }: EntryFormProps) {
   const [fat, setFat] = useState(initial?.fat ? String(initial.fat) : '')
   const [error, setError] = useState('')
   const [hint, setHint] = useState('')
+  const [candidates, setCandidates] = useState<FoodCandidate[]>([])
   const [saving, setSaving] = useState(false)
   const [estimating, setEstimating] = useState(false)
 
@@ -61,21 +73,28 @@ function EntryForm({ date, initial, onDone, onCancel }: EntryFormProps) {
   const f = Number(fat) || 0
   const calories = caloriesFromMacros(p, c, f)
 
+  const applyCandidate = (item: FoodCandidate) => {
+    setName(item.name)
+    setProtein(String(item.protein))
+    setCarbs(String(item.carbs))
+    setFat(String(item.fat))
+    setHint(sourceLabel(item.source, item.basis) + '，成分可再改')
+  }
+
   const handleEstimate = async () => {
     setError('')
     setHint('')
+    setCandidates([])
     setEstimating(true)
     try {
       const result = await estimateFoodNutrition(name)
-      setName(result.name)
-      setProtein(String(result.protein))
-      setCarbs(String(result.carbs))
-      setFat(String(result.fat))
-      setHint(
-        result.source === 'local'
-          ? '已按常见份量估算，成分可再改'
-          : 'AI 估算，成分可再改',
-      )
+      const { primary, candidates: list } = result
+      setName(primary.name)
+      setProtein(String(primary.protein))
+      setCarbs(String(primary.carbs))
+      setFat(String(primary.fat))
+      setCandidates(list)
+      setHint(sourceLabel(primary.source, primary.basis) + '，成分可再改')
     } catch (err) {
       setError(err instanceof Error ? err.message : '估算失败')
     } finally {
@@ -140,8 +159,9 @@ function EntryForm({ date, initial, onDone, onCancel }: EntryFormProps) {
             onChange={(e) => {
               setName(e.target.value)
               setHint('')
+              setCandidates([])
             }}
-            placeholder="例如 鸡胸饭、蒸虾"
+            placeholder="例如 鸡胸肉、燕麦奶"
             enterKeyHint="go"
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
@@ -162,6 +182,31 @@ function EntryForm({ date, initial, onDone, onCancel }: EntryFormProps) {
         </div>
         {hint && (
           <p className="mt-1.5 text-center text-xs text-slate-400">{hint}</p>
+        )}
+        {candidates.length > 1 && (
+          <div className="mt-3 max-h-40 space-y-1.5 overflow-y-auto">
+            <p className="text-[11px] text-slate-400">数据库结果，点选切换</p>
+            {candidates.slice(0, 8).map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => applyCandidate(item)}
+                className="flex w-full items-start justify-between gap-2 rounded-xl bg-white px-3 py-2.5 text-left dark:bg-[#2c2c2e]"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{item.name}</p>
+                  <p className="text-[11px] text-slate-400">
+                    {item.brand ? `${item.brand} · ` : ''}
+                    {item.basis} · {item.source === 'usda' ? 'USDA' : 'OFF'}
+                  </p>
+                </div>
+                <span className="shrink-0 text-xs tabular-nums text-orange-500">
+                  P{Math.round(item.protein)} C{Math.round(item.carbs)} F
+                  {Math.round(item.fat)}
+                </span>
+              </button>
+            ))}
+          </div>
         )}
       </div>
 

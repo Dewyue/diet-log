@@ -18,6 +18,7 @@ import {
   saveVisionSettings,
   type VisionSettings,
 } from '../lib/visionSettings'
+import { getUsdaApiKey, setUsdaApiKey } from '../lib/foodApi'
 import {
   DEFAULT_TARGETS,
   MEAL_LABELS,
@@ -31,6 +32,7 @@ export default function SettingsPage() {
   const currentTargets = useTargets()
   const [targets, setTargets] = useState<DailyTargets>(DEFAULT_TARGETS)
   const [vision, setVision] = useState<VisionSettings>(() => loadVisionSettings())
+  const [usdaKey, setUsdaKey] = useState(() => getUsdaApiKey())
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
   const [storageBackend, setStorageBackend] = useState('')
@@ -38,6 +40,7 @@ export default function SettingsPage() {
   useEffect(() => {
     setStorageBackend(getStorageBackend())
     setVision(loadVisionSettings())
+    setUsdaKey(getUsdaApiKey())
   }, [])
 
   useEffect(() => {
@@ -209,30 +212,58 @@ export default function SettingsPage() {
       </section>
 
       <section className="space-y-3 rounded-2xl bg-white p-4 dark:bg-[#1c1c1e]">
-        <h2 className="text-[15px] font-semibold">名称估算（可选）</h2>
+        <h2 className="text-[15px] font-semibold">食物数据库</h2>
         <p className="text-xs leading-relaxed text-slate-500">
-          常见食物可离线估算。遇到库里没有的，填免费 Gemini Key 后点「估算」即可。
+          点「估算」会依次查：本地常用 →{' '}
+          <a
+            className="text-orange-500"
+            href="https://world.openfoodfacts.org"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Open Food Facts
+          </a>
+          （免 Key）→ USDA（可选 Key）→ Gemini 兜底。
         </p>
-        <input
-          type="password"
-          autoComplete="off"
-          value={vision.apiKey}
-          onChange={(e) => setVision((v) => ({ ...v, apiKey: e.target.value }))}
-          placeholder="Gemini API Key（可空）"
-          className="w-full rounded-xl bg-slate-50 px-3 py-3 text-sm outline-none ring-orange-500 focus:ring-2 dark:bg-slate-800"
-        />
+        <label className="block">
+          <span className="mb-1 block text-xs text-slate-500">
+            USDA API Key（可选，免费申请）
+          </span>
+          <input
+            type="password"
+            autoComplete="off"
+            value={usdaKey}
+            onChange={(e) => setUsdaKey(e.target.value)}
+            placeholder="fdc.nal.usda.gov 申请"
+            className="w-full rounded-xl bg-slate-50 px-3 py-3 text-sm outline-none ring-orange-500 focus:ring-2 dark:bg-slate-800"
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs text-slate-500">
+            Gemini Key（可选，库没有时兜底）
+          </span>
+          <input
+            type="password"
+            autoComplete="off"
+            value={vision.apiKey}
+            onChange={(e) => setVision((v) => ({ ...v, apiKey: e.target.value }))}
+            placeholder="aistudio.google.com 申请"
+            className="w-full rounded-xl bg-slate-50 px-3 py-3 text-sm outline-none ring-orange-500 focus:ring-2 dark:bg-slate-800"
+          />
+        </label>
         <button
           type="button"
           onClick={() => {
+            setUsdaApiKey(usdaKey)
             saveVisionSettings({
               provider: 'gemini',
               apiKey: vision.apiKey.trim(),
             })
-            showMessage(vision.apiKey.trim() ? '已保存估算 Key' : '已清空 Key')
+            showMessage('已保存数据库配置')
           }}
           className="w-full rounded-xl bg-slate-100 py-3 text-sm font-medium dark:bg-slate-800"
         >
-          保存 Key
+          保存
         </button>
       </section>
 

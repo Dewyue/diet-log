@@ -1,4 +1,5 @@
 import { hasVisionApiKey, loadVisionSettings } from './visionSettings'
+import { searchFoodDatabases, type FoodCandidate } from './foodApi'
 
 export interface NutritionEstimate {
   name: string
@@ -6,7 +7,17 @@ export interface NutritionEstimate {
   protein: number
   carbs: number
   fat: number
-  source: 'local' | 'ai'
+  source: 'local' | 'openfoodfacts' | 'usda' | 'ai'
+  basis?: string
+}
+
+export type { FoodCandidate }
+
+export interface EstimateResult {
+  /** Primary fill (best match) */
+  primary: NutritionEstimate
+  /** Other database hits user can tap */
+  candidates: FoodCandidate[]
 }
 
 /** Typical one-serving estimates for common Chinese foods (rough). */
@@ -215,16 +226,50 @@ async function estimateFromAi(query: string): Promise<NutritionEstimate> {
   }
 }
 
-export async function estimateFoodNutrition(query: string): Promise<NutritionEstimate> {
+export async function estimateFoodNutrition(query: string): Promise<EstimateResult> {
   const trimmed = query.trim()
   if (!trimmed) throw new Error('请先填写食物名称')
 
   const local = estimateFromLocal(trimmed)
-  if (local) return local
-
-  if (!hasVisionApiKey()) {
-    throw new Error('本地没有匹配。可在设置填写免费 Gemini Key，或手动填数字')
+  if (local) {
+    // Still fetch DB hits so user can switch to packaged product data
+    let candidates: FoodCandidate[] = []
+    try {
+      candidates = await searchFoodDatabases(trimmed)
+    } catch {
+      // ignore network errors when local already matched
+    }
+    return { primary: local, candidates }
   }
 
-  return estimateFromAi(trimmed)
+  try {
+    const candidates = await searchFoodDatabases(trimmed)
+    if (candidates.length > 0) {
+      const best = candidates[0]
+      return {
+        primary: {
+          name: best.name,
+          calories: best.calories,
+          protein: best.protein,
+          carbs: best.carbs,
+          fat: best.fat,
+          source: best.source,
+          basis: best.basis,
+        },
+        candidates,
+      }
+    }
+  } catch (err) {
+    // fall through to AI
+    if (!hasVisionApiKey()) {
+      throw err instanceof Error ? err : new Error('数据库查询失败')
+    }
+  }
+
+  if (!hasVisionApiKey()) {
+    throw new Error('数据库未找到匹配。可换个关键词，或在设置填写 Gemini Key 做兜底估算')
+  }
+
+  const ai = await estimateFromAi(trimmed)
+  return { primary: ai, candidates: [] }
 }
