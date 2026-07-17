@@ -1,17 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useMemo, useState } from 'react'
 import { DaySheet } from '../components/DaySheet'
 import DayProgress from '../components/DayProgress'
 import MonthCalendar from '../components/MonthCalendar'
 import StatsCharts, { StatsSummary } from '../components/StatsCharts'
 import { useEntriesByMonth, useTargets, groupByDate } from '../hooks/useEntries'
-import {
-  autosaveDrafts,
-  decodeImportParam,
-  tryImportFromClipboard,
-} from '../lib/autoImport'
 import { formatDate, formatMonthLabel } from '../lib/dates'
-import { parseImportText, type ParsedMealDraft } from '../lib/importParse'
 
 export default function CalendarPage() {
   const now = new Date()
@@ -19,9 +12,6 @@ export default function CalendarPage() {
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [statsExpanded, setStatsExpanded] = useState(false)
-  const [importDraft, setImportDraft] = useState<ParsedMealDraft | null>(null)
-  const [banner, setBanner] = useState('')
-  const [searchParams, setSearchParams] = useSearchParams()
 
   const { entries } = useEntriesByMonth(year, month)
   const targets = useTargets()
@@ -30,87 +20,6 @@ export default function CalendarPage() {
   const todayEntries = byDate.get(today) ?? []
 
   const monthLabel = useMemo(() => formatMonthLabel(year, month), [year, month])
-
-  const showBanner = (text: string) => {
-    setBanner(text)
-    window.setTimeout(() => setBanner(''), 4000)
-  }
-
-  // Deep-link import from Shortcuts: ?import= / ?import_b64= & autosave=1
-  useEffect(() => {
-    const rawB64 = searchParams.get('import_b64')
-    const raw = searchParams.get('import')
-    if (!rawB64 && !raw) return
-
-    const autosave = searchParams.get('autosave') === '1'
-    let cancelled = false
-
-    ;(async () => {
-      try {
-        const decoded = rawB64
-          ? decodeImportParam(rawB64, true)
-          : decodeImportParam(raw ?? '', false)
-        const drafts = parseImportText(decoded)
-        if (cancelled || drafts.length === 0) return
-
-        if (autosave) {
-          const count = await autosaveDrafts(drafts)
-          const date = drafts[0].date || today
-          const [y, m] = date.split('-').map(Number)
-          if (y && m) {
-            setYear(y)
-            setMonth(m)
-          }
-          showBanner(count > 0 ? `已自动写入 ${count} 餐` : '这些记录已存在，未重复添加')
-        } else {
-          const draft = drafts[0]
-          const date = draft.date || today
-          setImportDraft(draft)
-          setSelectedDate(date)
-          const [y, m] = date.split('-').map(Number)
-          if (y && m) {
-            setYear(y)
-            setMonth(m)
-          }
-        }
-      } catch {
-        // ignore bad payload
-      }
-
-      const next = new URLSearchParams(searchParams)
-      next.delete('import')
-      next.delete('import_b64')
-      next.delete('autosave')
-      setSearchParams(next, { replace: true })
-    })()
-
-    return () => {
-      cancelled = true
-    }
-  }, [searchParams, setSearchParams, today])
-
-  // Optional: when opening the PWA, pull 小仓鼠 text from clipboard
-  useEffect(() => {
-    let alive = true
-
-    const run = async () => {
-      const result = await tryImportFromClipboard()
-      if (!alive) return
-      if (result.imported > 0) {
-        showBanner(`已从剪贴板自动写入 ${result.imported} 餐`)
-      }
-    }
-
-    run()
-    const onVis = () => {
-      if (document.visibilityState === 'visible') run()
-    }
-    document.addEventListener('visibilitychange', onVis)
-    return () => {
-      alive = false
-      document.removeEventListener('visibilitychange', onVis)
-    }
-  }, [])
 
   const goPrevMonth = () => {
     if (month === 1) {
@@ -138,12 +47,6 @@ export default function CalendarPage() {
 
   return (
     <div className="space-y-4">
-      {banner && (
-        <div className="rounded-2xl bg-orange-500/15 px-4 py-3 text-sm text-orange-700 dark:text-orange-300">
-          {banner}
-        </div>
-      )}
-
       <div className="flex items-center justify-between">
         <button
           type="button"
@@ -207,22 +110,11 @@ export default function CalendarPage() {
         month={month}
         entries={entries}
         targets={targets}
-        onSelectDate={(date) => {
-          setImportDraft(null)
-          setSelectedDate(date)
-        }}
+        onSelectDate={setSelectedDate}
       />
 
       {selectedDate && (
-        <DaySheet
-          date={selectedDate}
-          initialDraft={importDraft}
-          onDraftConsumed={() => setImportDraft(null)}
-          onClose={() => {
-            setSelectedDate(null)
-            setImportDraft(null)
-          }}
-        />
+        <DaySheet date={selectedDate} onClose={() => setSelectedDate(null)} />
       )}
     </div>
   )
