@@ -97,27 +97,21 @@ export default function DayProgress({ entries, targets, compact }: DayProgressPr
           label="蛋白"
           actual={totals.protein}
           target={targets.protein}
-          color="#ff3b30"
+          color="#f9a8d4"
         />
         <MacroBar
           label="碳水"
           actual={totals.carbs}
           target={targets.carbs}
-          color="#34c759"
+          color="#86efac"
         />
         <MacroBar
           label="脂肪"
           actual={totals.fat}
           target={targets.fat}
-          color="#5856d6"
+          color="#fde68a"
         />
       </div>
-
-      {!compact && status.hasEntries && status.gaps.length > 0 && (
-        <p className="mt-3 text-[11px] leading-relaxed text-slate-400">
-          {status.gaps.join(' · ')}
-        </p>
-      )}
     </div>
   )
 }

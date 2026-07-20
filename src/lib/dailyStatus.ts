@@ -1,5 +1,4 @@
 import type { DailyTargets, FoodEntry, MacroTotals, MealType } from '../types'
-import { MEAL_LABELS } from '../types'
 
 /** Below this → 还需；from here up to target → 余量；above target → 已超 */
 export const CALORIE_COMFORT_MIN = 1500
@@ -71,7 +70,6 @@ export function getCalorieBadge(
 export function computeDailyStatus(entries: FoodEntry[], targets: DailyTargets): DailyStatus {
   const totals = sumEntries(entries)
   const hasEntries = entries.length > 0
-  const gaps: string[] = []
 
   const caloriesOk =
     hasEntries &&
@@ -91,17 +89,11 @@ export function computeDailyStatus(entries: FoodEntry[], targets: DailyTargets):
     macroFloorOk(totals.fat, targets.fat) &&
     macroCapOk(totals.fat, targets.fat, targets.macroCapEnabled)
 
-  if (hasEntries && !proteinOk) gaps.push('蛋白未到位')
-
   const presentMeals = new Set(entries.map((e) => e.meal))
   const missingMeals = (targets.requiredMeals ?? []).filter((m) => !presentMeals.has(m))
   const mealsOk = hasEntries && missingMeals.length === 0
-  if (hasEntries && !mealsOk) {
-    gaps.push(`缺餐：${missingMeals.map((m) => MEAL_LABELS[m]).join('、')}`)
-  }
 
-  // Fat/carbs no longer surface as gap copy; calorie state is the badge
-  const onTrack = hasEntries && caloriesOk && proteinOk && mealsOk
+  const onTrack = hasEntries && caloriesOk
 
   return {
     onTrack,
@@ -113,7 +105,7 @@ export function computeDailyStatus(entries: FoodEntry[], targets: DailyTargets):
     carbsOk,
     fatOk,
     mealsOk,
-    gaps,
+    gaps: [],
   }
 }
 

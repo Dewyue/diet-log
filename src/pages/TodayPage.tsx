@@ -60,11 +60,9 @@ export default function TodayPage() {
         <p className="mt-1 text-sm text-slate-400">
           {entries.length === 0
             ? '还没记，点右下角加一餐'
-            : status.gaps.length > 0
-              ? status.gaps.join(' · ')
-              : status.onTrack
-                ? '已到位'
-                : '继续记录'}
+            : status.onTrack
+              ? '热量到位'
+              : '继续记录'}
         </p>
       </header>
 
