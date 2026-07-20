@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   addEntry,
   deleteEntry,
@@ -9,12 +9,19 @@ import { formatDisplayDate } from '../lib/dates'
 import { computeDailyStatus } from '../lib/dailyStatus'
 import { useEntriesByDate, useTargets } from '../hooks/useEntries'
 import {
+  caloriesFromMacros,
+  formatPortions,
+  PORTION_KCAL,
+  PORTION_TEMPLATES,
+  scaleTemplate,
+  type PortionTemplate,
+} from '../lib/portionTemplates'
+import {
   MEAL_LABELS,
   MEAL_TYPES,
   type FoodEntry,
   type MealType,
 } from '../types'
-import { estimateFoodNutrition, type FoodCandidate } from '../lib/foodEstimate'
 import DayProgress from './DayProgress'
 
 function guessMeal(): MealType {
@@ -32,91 +39,73 @@ interface EntryFormProps {
   onCancel: () => void
 }
 
-/** Atwater: protein/carbs 4 kcal/g, fat 9 kcal/g */
-function caloriesFromMacros(protein: number, carbs: number, fat: number) {
-  return Math.round(protein * 4 + carbs * 4 + fat * 9)
-}
-
-function sourceLabel(source: string, basis?: string) {
-  const map: Record<string, string> = {
-    local: '本地常用',
-    openfoodfacts: 'Open Food Facts',
-    usda: 'USDA',
-    ai: 'AI 估算',
-  }
-  const base = map[source] ?? source
-  return basis ? `${base} · ${basis}` : base
-}
-
 function EntryForm({ date, initial, onDone, onCancel }: EntryFormProps) {
-  const nameRef = useRef<HTMLInputElement>(null)
   const [meal, setMeal] = useState<MealType>(initial?.meal ?? guessMeal())
   const [name, setName] = useState(initial?.name ?? '')
+  const [templateId, setTemplateId] = useState<string | null>(null)
+  const [portions, setPortions] = useState(1)
   const [protein, setProtein] = useState(
     initial?.protein ? String(initial.protein) : '',
   )
   const [carbs, setCarbs] = useState(initial?.carbs ? String(initial.carbs) : '')
   const [fat, setFat] = useState(initial?.fat ? String(initial.fat) : '')
   const [error, setError] = useState('')
-  const [hint, setHint] = useState('')
-  const [candidates, setCandidates] = useState<FoodCandidate[]>([])
   const [saving, setSaving] = useState(false)
-  const [estimating, setEstimating] = useState(false)
 
-  useEffect(() => {
-    const t = window.setTimeout(() => nameRef.current?.focus(), 50)
-    return () => window.clearTimeout(t)
-  }, [])
+  const selected = PORTION_TEMPLATES.find((t) => t.id === templateId) ?? null
 
   const p = Number(protein) || 0
   const c = Number(carbs) || 0
   const f = Number(fat) || 0
   const calories = caloriesFromMacros(p, c, f)
 
-  const applyCandidate = (item: FoodCandidate) => {
-    setName(item.name)
-    setProtein(String(item.protein))
-    setCarbs(String(item.carbs))
-    setFat(String(item.fat))
-    setHint(sourceLabel(item.source, item.basis) + '，成分可再改')
+  const applyTemplate = (template: PortionTemplate, nextPortions: number) => {
+    const scaled = scaleTemplate(template, nextPortions)
+    setTemplateId(template.id)
+    setPortions(nextPortions)
+    setProtein(String(scaled.protein))
+    setCarbs(String(scaled.carbs))
+    setFat(String(scaled.fat))
+    setName((prev) => {
+      if (initial?.name && prev === initial.name) return prev
+      const autoNames = new Set(
+        PORTION_TEMPLATES.flatMap((t) =>
+          [0.5, 1, 1.5, 2, 2.5, 3].map(
+            (n) => `${t.label} × ${formatPortions(n)}`,
+          ),
+        ),
+      )
+      if (!prev.trim() || autoNames.has(prev)) {
+        return `${template.label} × ${formatPortions(nextPortions)}`
+      }
+      return prev
+    })
+    setError('')
   }
 
-  const handleEstimate = async () => {
-    setError('')
-    setHint('')
-    setCandidates([])
-    setEstimating(true)
-    try {
-      const result = await estimateFoodNutrition(name)
-      const { primary, candidates: list } = result
-      setName(primary.name)
-      setProtein(String(primary.protein))
-      setCarbs(String(primary.carbs))
-      setFat(String(primary.fat))
-      setCandidates(list)
-      setHint(sourceLabel(primary.source, primary.basis) + '，成分可再改')
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '估算失败')
-    } finally {
-      setEstimating(false)
-    }
+  const bumpPortions = (delta: number) => {
+    const next = Math.round((portions + delta) * 10) / 10
+    if (next < 0.5 || next > 12) return
+    if (selected) applyTemplate(selected, next)
+    else setPortions(next)
   }
 
   const handleSubmit = async () => {
     setError('')
-    if (!name.trim()) {
-      setError('请填写食物名称')
+    const label = name.trim() || (selected ? `${selected.label} × ${formatPortions(portions)}` : '')
+    if (!label) {
+      setError('请选择模版或填写名称')
       return
     }
     if (calories <= 0) {
-      setError('请点「估算」，或填写蛋白/碳水/脂肪')
+      setError('请选择一份模版，或填写蛋白/碳水/脂肪')
       return
     }
 
     const payload = {
       date,
       meal,
-      name: name.trim(),
+      name: label,
       calories,
       protein: p,
       carbs: c,
@@ -149,65 +138,87 @@ function EntryForm({ date, initial, onDone, onCancel }: EntryFormProps) {
       }}
     >
       <div>
-        <span className="mb-1.5 block text-xs font-medium text-slate-400">
-          食物名称
-        </span>
-        <div className="flex gap-2">
-          <input
-            ref={nameRef}
-            value={name}
-            onChange={(e) => {
-              setName(e.target.value)
-              setHint('')
-              setCandidates([])
-            }}
-            placeholder="例如 鸡胸肉、燕麦奶"
-            enterKeyHint="go"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                void handleEstimate()
-              }
-            }}
-            className="min-w-0 flex-1 rounded-2xl bg-white px-4 py-3.5 text-[17px] outline-none ring-orange-500 focus:ring-2 dark:bg-[#2c2c2e]"
-          />
-          <button
-            type="button"
-            onClick={() => void handleEstimate()}
-            disabled={estimating || !name.trim()}
-            className="shrink-0 rounded-2xl bg-orange-500 px-4 text-[15px] font-semibold text-white disabled:opacity-40"
-          >
-            {estimating ? '…' : '估算'}
-          </button>
+        <div className="mb-2 flex items-baseline justify-between gap-2">
+          <span className="text-xs font-medium text-slate-400">按份选择</span>
+          <span className="text-[11px] text-slate-400">
+            每份约 {PORTION_KCAL} kcal
+          </span>
         </div>
-        {hint && (
-          <p className="mt-1.5 text-center text-xs text-slate-400">{hint}</p>
-        )}
-        {candidates.length > 1 && (
-          <div className="mt-3 max-h-40 space-y-1.5 overflow-y-auto">
-            <p className="text-[11px] text-slate-400">数据库结果，点选切换</p>
-            {candidates.slice(0, 8).map((item) => (
+        <div className="grid grid-cols-2 gap-2">
+          {PORTION_TEMPLATES.map((t) => {
+            const on = templateId === t.id
+            return (
               <button
-                key={item.id}
+                key={t.id}
                 type="button"
-                onClick={() => applyCandidate(item)}
-                className="flex w-full items-start justify-between gap-2 rounded-xl bg-white px-3 py-2.5 text-left dark:bg-[#2c2c2e]"
+                onClick={() => applyTemplate(t, portions)}
+                className={[
+                  'rounded-2xl px-3 py-3 text-left transition',
+                  on
+                    ? 'bg-orange-500 text-white'
+                    : 'bg-white dark:bg-[#2c2c2e]',
+                ].join(' ')}
               >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{item.name}</p>
-                  <p className="text-[11px] text-slate-400">
-                    {item.brand ? `${item.brand} · ` : ''}
-                    {item.basis} · {item.source === 'usda' ? 'USDA' : 'OFF'}
-                  </p>
-                </div>
-                <span className="shrink-0 text-xs tabular-nums text-orange-500">
-                  P{Math.round(item.protein)} C{Math.round(item.carbs)} F
-                  {Math.round(item.fat)}
-                </span>
+                <p className="text-[15px] font-semibold">{t.label}</p>
+                <p
+                  className={[
+                    'mt-0.5 text-[11px]',
+                    on ? 'text-white/80' : 'text-slate-400',
+                  ].join(' ')}
+                >
+                  {t.hint}
+                </p>
               </button>
-            ))}
+            )
+          })}
+        </div>
+      </div>
+
+      <div className="rounded-2xl bg-white px-4 py-3 dark:bg-[#2c2c2e]">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium text-slate-400">份数</span>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              aria-label="减少份数"
+              onClick={() => bumpPortions(-0.5)}
+              disabled={portions <= 0.5}
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-lg font-medium disabled:opacity-30 dark:bg-slate-700"
+            >
+              −
+            </button>
+            <span className="min-w-[3ch] text-center text-xl font-semibold tabular-nums">
+              {formatPortions(portions)}
+            </span>
+            <button
+              type="button"
+              aria-label="增加份数"
+              onClick={() => bumpPortions(0.5)}
+              disabled={portions >= 12}
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-lg font-medium disabled:opacity-30 dark:bg-slate-700"
+            >
+              +
+            </button>
           </div>
+        </div>
+        {selected && (
+          <p className="mt-2 text-center text-xs text-slate-400">
+            {selected.label} × {formatPortions(portions)} · 约 {calories} kcal
+          </p>
         )}
+      </div>
+
+      <div>
+        <span className="mb-1.5 block text-xs font-medium text-slate-400">
+          名称（可选）
+        </span>
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="例如 午饭鸡胸"
+          enterKeyHint="done"
+          className="w-full rounded-2xl bg-white px-4 py-3.5 text-[17px] outline-none ring-orange-500 focus:ring-2 dark:bg-[#2c2c2e]"
+        />
       </div>
 
       <div className="grid grid-cols-4 gap-1.5 rounded-2xl bg-slate-100 p-1 dark:bg-slate-800">
@@ -230,7 +241,7 @@ function EntryForm({ date, initial, onDone, onCancel }: EntryFormProps) {
 
       <div>
         <p className="mb-1.5 text-xs font-medium text-slate-400">
-          成分（g，可改）
+          成分（g，可再改）
         </p>
         <div className="grid grid-cols-3 gap-2">
           <MacroField label="蛋白" value={protein} onChange={setProtein} />

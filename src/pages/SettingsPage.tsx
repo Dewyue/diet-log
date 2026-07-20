@@ -14,12 +14,6 @@ import {
 } from '../lib/backup'
 import { useTargets } from '../hooks/useEntries'
 import {
-  loadVisionSettings,
-  saveVisionSettings,
-  type VisionSettings,
-} from '../lib/visionSettings'
-import { getUsdaApiKey, setUsdaApiKey } from '../lib/foodApi'
-import {
   DEFAULT_TARGETS,
   MEAL_LABELS,
   MEAL_TYPES,
@@ -31,16 +25,12 @@ export default function SettingsPage() {
   const fileRef = useRef<HTMLInputElement>(null)
   const currentTargets = useTargets()
   const [targets, setTargets] = useState<DailyTargets>(DEFAULT_TARGETS)
-  const [vision, setVision] = useState<VisionSettings>(() => loadVisionSettings())
-  const [usdaKey, setUsdaKey] = useState(() => getUsdaApiKey())
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
   const [storageBackend, setStorageBackend] = useState('')
 
   useEffect(() => {
     setStorageBackend(getStorageBackend())
-    setVision(loadVisionSettings())
-    setUsdaKey(getUsdaApiKey())
   }, [])
 
   useEffect(() => {
@@ -206,63 +196,6 @@ export default function SettingsPage() {
           onClick={handleSaveTargets}
           disabled={busy}
           className="w-full rounded-2xl bg-orange-500 py-3.5 text-[15px] font-semibold text-white disabled:opacity-50"
-        >
-          保存
-        </button>
-      </section>
-
-      <section className="space-y-3 rounded-2xl bg-white p-4 dark:bg-[#1c1c1e]">
-        <h2 className="text-[15px] font-semibold">食物数据库</h2>
-        <p className="text-xs leading-relaxed text-slate-500">
-          点「估算」优先查{' '}
-          <a
-            className="text-orange-500"
-            href="https://world.openfoodfacts.org"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Open Food Facts
-          </a>
-          {' '}
-          + USDA；找不到再用本地常用与 Gemini 兜底。
-        </p>
-        <label className="block">
-          <span className="mb-1 block text-xs text-slate-500">
-            USDA API Key（可选，免费申请）
-          </span>
-          <input
-            type="password"
-            autoComplete="off"
-            value={usdaKey}
-            onChange={(e) => setUsdaKey(e.target.value)}
-            placeholder="fdc.nal.usda.gov 申请"
-            className="w-full rounded-xl bg-slate-50 px-3 py-3 text-sm outline-none ring-orange-500 focus:ring-2 dark:bg-slate-800"
-          />
-        </label>
-        <label className="block">
-          <span className="mb-1 block text-xs text-slate-500">
-            Gemini Key（可选，库没有时兜底）
-          </span>
-          <input
-            type="password"
-            autoComplete="off"
-            value={vision.apiKey}
-            onChange={(e) => setVision((v) => ({ ...v, apiKey: e.target.value }))}
-            placeholder="aistudio.google.com 申请"
-            className="w-full rounded-xl bg-slate-50 px-3 py-3 text-sm outline-none ring-orange-500 focus:ring-2 dark:bg-slate-800"
-          />
-        </label>
-        <button
-          type="button"
-          onClick={() => {
-            setUsdaApiKey(usdaKey)
-            saveVisionSettings({
-              provider: 'gemini',
-              apiKey: vision.apiKey.trim(),
-            })
-            showMessage('已保存数据库配置')
-          }}
-          className="w-full rounded-xl bg-slate-100 py-3 text-sm font-medium dark:bg-slate-800"
         >
           保存
         </button>
