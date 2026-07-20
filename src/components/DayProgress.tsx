@@ -1,10 +1,21 @@
-import { computeDailyStatus, progressPct } from '../lib/dailyStatus'
+import {
+  computeDailyStatus,
+  getCalorieBadge,
+  progressPct,
+  type CalorieBadgeTone,
+} from '../lib/dailyStatus'
 import type { DailyTargets, FoodEntry } from '../types'
 
 interface DayProgressProps {
   entries: FoodEntry[]
   targets: DailyTargets
   compact?: boolean
+}
+
+const BADGE_TONE: Record<CalorieBadgeTone, string> = {
+  blue: 'bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300',
+  green: 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400',
+  red: 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400',
 }
 
 function MacroBar({
@@ -41,6 +52,7 @@ export default function DayProgress({ entries, targets, compact }: DayProgressPr
   const status = computeDailyStatus(entries, targets)
   const { totals } = status
   const calPct = progressPct(totals.calories, targets.calories)
+  const calorieBadge = getCalorieBadge(totals.calories, targets.calories)
 
   return (
     <div
@@ -49,7 +61,7 @@ export default function DayProgress({ entries, targets, compact }: DayProgressPr
         compact ? '' : '',
       ].join(' ')}
     >
-      <div className="mb-3 flex items-end justify-between">
+      <div className="mb-3 flex items-end justify-between gap-3">
         <div>
           <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
             今日热量
@@ -64,13 +76,11 @@ export default function DayProgress({ entries, targets, compact }: DayProgressPr
         {status.hasEntries && (
           <span
             className={[
-              'rounded-full px-2.5 py-1 text-xs font-medium',
-              status.onTrack
-                ? 'bg-green-500/15 text-green-600 dark:text-green-400'
-                : 'bg-slate-500/15 text-slate-500',
+              'shrink-0 rounded-xl px-2.5 py-1.5 text-xs font-semibold tabular-nums',
+              BADGE_TONE[calorieBadge.tone],
             ].join(' ')}
           >
-            {status.onTrack ? '到位' : '未到位'}
+            {calorieBadge.label}
           </span>
         )}
       </div>
@@ -103,9 +113,9 @@ export default function DayProgress({ entries, targets, compact }: DayProgressPr
         />
       </div>
 
-      {!compact && status.hasEntries && !status.onTrack && status.gaps.length > 0 && (
+      {!compact && status.hasEntries && status.gaps.length > 0 && (
         <p className="mt-3 text-[11px] leading-relaxed text-slate-400">
-          {status.gaps.slice(0, 3).join(' · ')}
+          {status.gaps.join(' · ')}
         </p>
       )}
     </div>

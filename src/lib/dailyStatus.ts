@@ -1,6 +1,9 @@
 import type { DailyTargets, FoodEntry, MacroTotals, MealType } from '../types'
 import { MEAL_LABELS } from '../types'
 
+/** Below this → 还需；from here up to target → 余量；above target → 已超 */
+export const CALORIE_COMFORT_MIN = 1500
+
 export interface DailyStatus {
   onTrack: boolean
   hasEntries: boolean
@@ -12,6 +15,14 @@ export interface DailyStatus {
   fatOk: boolean
   mealsOk: boolean
   gaps: string[]
+}
+
+export type CalorieBadgeTone = 'blue' | 'green' | 'red'
+
+export interface CalorieBadge {
+  label: string
+  amount: number
+  tone: CalorieBadgeTone
 }
 
 export function sumEntries(entries: FoodEntry[]): MacroTotals {
@@ -36,20 +47,36 @@ function macroCapOk(actual: number, target: number, enabled: boolean) {
   return actual <= target * 1.2
 }
 
+/** 还需 / 余量 / 已超 — for today's calorie pill */
+export function getCalorieBadge(
+  actualCalories: number,
+  targetCalories: number,
+): CalorieBadge {
+  const actual = Math.round(actualCalories)
+  const target = Math.round(targetCalories)
+
+  if (actual > target) {
+    const amount = actual - target
+    return { label: `已超（${amount}）`, amount, tone: 'red' }
+  }
+
+  const remaining = Math.max(0, target - actual)
+  if (actual >= CALORIE_COMFORT_MIN) {
+    return { label: `余量（${remaining}）`, amount: remaining, tone: 'green' }
+  }
+
+  return { label: `还需（${remaining}）`, amount: remaining, tone: 'blue' }
+}
+
 export function computeDailyStatus(entries: FoodEntry[], targets: DailyTargets): DailyStatus {
   const totals = sumEntries(entries)
   const hasEntries = entries.length > 0
   const gaps: string[] = []
 
-  const tol = Math.max(0, targets.calorieTolerancePct) / 100
-  const calMin = targets.calories * (1 - tol)
-  const calMax = targets.calories * (1 + tol)
   const caloriesOk =
-    hasEntries && totals.calories >= calMin && totals.calories <= calMax
-  if (hasEntries && !caloriesOk) {
-    if (totals.calories < calMin) gaps.push('热量不足')
-    else gaps.push('热量超标')
-  }
+    hasEntries &&
+    totals.calories >= CALORIE_COMFORT_MIN &&
+    totals.calories <= targets.calories
 
   const proteinOk =
     hasEntries &&
@@ -65,8 +92,6 @@ export function computeDailyStatus(entries: FoodEntry[], targets: DailyTargets):
     macroCapOk(totals.fat, targets.fat, targets.macroCapEnabled)
 
   if (hasEntries && !proteinOk) gaps.push('蛋白未到位')
-  if (hasEntries && !carbsOk) gaps.push('碳水未到位')
-  if (hasEntries && !fatOk) gaps.push('脂肪未到位')
 
   const presentMeals = new Set(entries.map((e) => e.meal))
   const missingMeals = (targets.requiredMeals ?? []).filter((m) => !presentMeals.has(m))
@@ -75,8 +100,8 @@ export function computeDailyStatus(entries: FoodEntry[], targets: DailyTargets):
     gaps.push(`缺餐：${missingMeals.map((m) => MEAL_LABELS[m]).join('、')}`)
   }
 
-  const onTrack =
-    hasEntries && caloriesOk && proteinOk && carbsOk && fatOk && mealsOk
+  // Fat/carbs no longer surface as gap copy; calorie state is the badge
+  const onTrack = hasEntries && caloriesOk && proteinOk && mealsOk
 
   return {
     onTrack,
