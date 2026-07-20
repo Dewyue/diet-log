@@ -46,6 +46,14 @@ export const PORTION_TEMPLATES: PortionTemplate[] = [
     fat: 0,
   },
   {
+    id: 'veggie',
+    label: '纯蔬菜',
+    hint: '青菜、黄瓜、番茄',
+    protein: 5,
+    carbs: 17,
+    fat: 0,
+  },
+  {
     id: 'dairy',
     label: '奶类',
     hint: '牛奶、原味酸奶',
