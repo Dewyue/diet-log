@@ -11,7 +11,20 @@ export default function CalendarPage() {
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  const [startInAdd, setStartInAdd] = useState(false)
   const [statsExpanded, setStatsExpanded] = useState(false)
+
+  const openDay = (date: string, add = false) => {
+    setStartInAdd(add)
+    setSelectedDate(date)
+  }
+
+  const quickAddToday = () => {
+    const t = new Date()
+    setYear(t.getFullYear())
+    setMonth(t.getMonth() + 1)
+    openDay(formatDate(t), true)
+  }
 
   const { entries } = useEntriesByMonth(year, month)
   const targets = useTargets()
@@ -110,11 +123,28 @@ export default function CalendarPage() {
         month={month}
         entries={entries}
         targets={targets}
-        onSelectDate={setSelectedDate}
+        onSelectDate={(date) => openDay(date)}
       />
 
+      <button
+        type="button"
+        onClick={quickAddToday}
+        aria-label="快速记录今天"
+        className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] right-[max(1rem,calc(50%-215px+1rem))] z-30 flex h-14 w-14 items-center justify-center rounded-full bg-orange-500 text-3xl font-light leading-none text-white shadow-lg shadow-orange-500/40 transition active:scale-95"
+      >
+        +
+      </button>
+
       {selectedDate && (
-        <DaySheet date={selectedDate} onClose={() => setSelectedDate(null)} />
+        <DaySheet
+          key={`${selectedDate}-${startInAdd ? 'add' : 'list'}`}
+          date={selectedDate}
+          startInAdd={startInAdd}
+          onClose={() => {
+            setSelectedDate(null)
+            setStartInAdd(false)
+          }}
+        />
       )}
     </div>
   )

@@ -362,12 +362,16 @@ function RecordItem({
 interface DaySheetProps {
   date: string
   onClose: () => void
+  /** Open directly on the add form (e.g. FAB quick log) */
+  startInAdd?: boolean
 }
 
-export function DaySheet({ date, onClose }: DaySheetProps) {
+export function DaySheet({ date, onClose, startInAdd = false }: DaySheetProps) {
   const entries = useEntriesByDate(date)
   const targets = useTargets()
-  const [mode, setMode] = useState<'list' | 'add' | 'edit'>('list')
+  const [mode, setMode] = useState<'list' | 'add' | 'edit'>(
+    startInAdd ? 'add' : 'list',
+  )
   const [editing, setEditing] = useState<FoodEntry | null>(null)
 
   const grouped = useMemo(() => {
