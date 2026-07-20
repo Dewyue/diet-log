@@ -315,7 +315,7 @@ function MacroField({
   )
 }
 
-function RecordItem({
+function MealRecordItem({
   record,
   onEdit,
   onDelete,
@@ -359,20 +359,31 @@ function RecordItem({
   )
 }
 
+export { MealRecordItem }
+
 interface DaySheetProps {
   date: string
   onClose: () => void
   /** Open directly on the add form (e.g. FAB quick log) */
   startInAdd?: boolean
+  /** Open directly on the edit form for this entry */
+  editEntry?: FoodEntry
 }
 
-export function DaySheet({ date, onClose, startInAdd = false }: DaySheetProps) {
+export function DaySheet({
+  date,
+  onClose,
+  startInAdd = false,
+  editEntry,
+}: DaySheetProps) {
   const entries = useEntriesByDate(date)
   const targets = useTargets()
-  const [mode, setMode] = useState<'list' | 'add' | 'edit'>(
-    startInAdd ? 'add' : 'list',
-  )
-  const [editing, setEditing] = useState<FoodEntry | null>(null)
+  const [mode, setMode] = useState<'list' | 'add' | 'edit'>(() => {
+    if (editEntry) return 'edit'
+    if (startInAdd) return 'add'
+    return 'list'
+  })
+  const [editing, setEditing] = useState<FoodEntry | null>(editEntry ?? null)
 
   const grouped = useMemo(() => {
     const map = new Map<MealType, FoodEntry[]>()
@@ -433,7 +444,7 @@ export function DaySheet({ date, onClose, startInAdd = false }: DaySheetProps) {
               return (
                 <div key={meal} className="space-y-2">
                   {list.map((record) => (
-                    <RecordItem
+                    <MealRecordItem
                       key={record.id}
                       record={record}
                       onEdit={() => {

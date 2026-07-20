@@ -1,37 +1,19 @@
 import { useMemo, useState } from 'react'
 import { DaySheet } from '../components/DaySheet'
-import DayProgress from '../components/DayProgress'
 import MonthCalendar from '../components/MonthCalendar'
 import StatsCharts, { StatsSummary } from '../components/StatsCharts'
-import { useEntriesByMonth, useTargets, groupByDate } from '../hooks/useEntries'
-import { formatDate, formatMonthLabel } from '../lib/dates'
+import { useEntriesByMonth, useTargets } from '../hooks/useEntries'
+import { formatMonthLabel } from '../lib/dates'
 
 export default function CalendarPage() {
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
-  const [startInAdd, setStartInAdd] = useState(false)
-  const [statsExpanded, setStatsExpanded] = useState(false)
-
-  const openDay = (date: string, add = false) => {
-    setStartInAdd(add)
-    setSelectedDate(date)
-  }
-
-  const quickAddToday = () => {
-    const t = new Date()
-    setYear(t.getFullYear())
-    setMonth(t.getMonth() + 1)
-    openDay(formatDate(t), true)
-  }
+  const [statsExpanded, setStatsExpanded] = useState(true)
 
   const { entries } = useEntriesByMonth(year, month)
   const targets = useTargets()
-  const today = formatDate(new Date())
-  const byDate = groupByDate(entries)
-  const todayEntries = byDate.get(today) ?? []
-
   const monthLabel = useMemo(() => formatMonthLabel(year, month), [year, month])
 
   const goPrevMonth = () => {
@@ -60,6 +42,11 @@ export default function CalendarPage() {
 
   return (
     <div className="space-y-4">
+      <header>
+        <h1 className="text-2xl font-semibold tracking-tight">数据</h1>
+        <p className="mt-1 text-sm text-slate-400">按月查看日历与营养趋势</p>
+      </header>
+
       <div className="flex items-center justify-between">
         <button
           type="button"
@@ -69,13 +56,13 @@ export default function CalendarPage() {
           ‹
         </button>
         <div className="text-center">
-          <h1 className="text-lg font-semibold tracking-tight">{monthLabel}</h1>
+          <p className="text-lg font-semibold tracking-tight">{monthLabel}</p>
           <button
             type="button"
             onClick={goToday}
             className="text-xs font-medium text-orange-500"
           >
-            回到今天
+            回到本月
           </button>
         </div>
         <button
@@ -86,10 +73,6 @@ export default function CalendarPage() {
           ›
         </button>
       </div>
-
-      {year === now.getFullYear() && month === now.getMonth() + 1 && (
-        <DayProgress entries={todayEntries} targets={targets} />
-      )}
 
       <StatsSummary entries={entries} targets={targets} />
 
@@ -123,28 +106,11 @@ export default function CalendarPage() {
         month={month}
         entries={entries}
         targets={targets}
-        onSelectDate={(date) => openDay(date)}
+        onSelectDate={setSelectedDate}
       />
 
-      <button
-        type="button"
-        onClick={quickAddToday}
-        aria-label="快速记录今天"
-        className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] right-[max(1rem,calc(50%-215px+1rem))] z-30 flex h-14 w-14 items-center justify-center rounded-full bg-orange-500 text-3xl font-light leading-none text-white shadow-lg shadow-orange-500/40 transition active:scale-95"
-      >
-        +
-      </button>
-
       {selectedDate && (
-        <DaySheet
-          key={`${selectedDate}-${startInAdd ? 'add' : 'list'}`}
-          date={selectedDate}
-          startInAdd={startInAdd}
-          onClose={() => {
-            setSelectedDate(null)
-            setStartInAdd(false)
-          }}
-        />
+        <DaySheet date={selectedDate} onClose={() => setSelectedDate(null)} />
       )}
     </div>
   )
