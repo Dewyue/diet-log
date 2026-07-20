@@ -1,6 +1,4 @@
 import { useMemo, useState } from 'react'
-import { DaySheet } from '../components/DaySheet'
-import MonthCalendar from '../components/MonthCalendar'
 import StatsCharts, { StatsSummary } from '../components/StatsCharts'
 import { useEntriesByMonth, useTargets } from '../hooks/useEntries'
 import { formatMonthLabel } from '../lib/dates'
@@ -9,7 +7,6 @@ export default function CalendarPage() {
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
-  const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [statsExpanded, setStatsExpanded] = useState(true)
 
   const { entries } = useEntriesByMonth(year, month)
@@ -44,7 +41,7 @@ export default function CalendarPage() {
     <div className="space-y-4">
       <header>
         <h1 className="text-2xl font-semibold tracking-tight">数据</h1>
-        <p className="mt-1 text-sm text-slate-400">按月查看日历与营养趋势</p>
+        <p className="mt-1 text-sm text-slate-400">按月查看营养趋势</p>
       </header>
 
       <div className="flex items-center justify-between">
@@ -91,27 +88,6 @@ export default function CalendarPage() {
         month={month}
         expanded={statsExpanded}
       />
-
-      <div className="flex items-center gap-3 text-xs text-slate-400">
-        <span className="flex items-center gap-1">
-          <span className="h-2 w-2 rounded-full bg-green-500" /> 到位
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="h-2 w-2 rounded-full bg-slate-400" /> 未到位
-        </span>
-      </div>
-
-      <MonthCalendar
-        year={year}
-        month={month}
-        entries={entries}
-        targets={targets}
-        onSelectDate={setSelectedDate}
-      />
-
-      {selectedDate && (
-        <DaySheet date={selectedDate} onClose={() => setSelectedDate(null)} />
-      )}
     </div>
   )
 }
