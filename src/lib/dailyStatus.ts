@@ -1,7 +1,7 @@
 import type { DailyTargets, FoodEntry, MacroTotals, MealType } from '../types'
 
-/** Below this → 还需；from here up to target → 余量；above target → 已超 */
-export const CALORIE_COMFORT_MIN = 1500
+/** Fixed hard ceiling for 已超 — not the editable daily target */
+export const CALORIE_HARD_CAP = 1800
 
 export interface DailyStatus {
   onTrack: boolean
@@ -46,7 +46,12 @@ function macroCapOk(actual: number, target: number, enabled: boolean) {
   return actual <= target * 1.2
 }
 
-/** 还需 / 余量 / 已超 — for today's calorie pill */
+/**
+ * Zones (1800 is fixed):
+ * - actual < target → 还需（浅蓝）
+ * - target ≤ actual ≤ 1800 → 余量（绿）
+ * - actual > 1800 → 已超（红）
+ */
 export function getCalorieBadge(
   actualCalories: number,
   targetCalories: number,
@@ -54,17 +59,18 @@ export function getCalorieBadge(
   const actual = Math.round(actualCalories)
   const target = Math.round(targetCalories)
 
-  if (actual > target) {
-    const amount = actual - target
+  if (actual > CALORIE_HARD_CAP) {
+    const amount = actual - CALORIE_HARD_CAP
     return { label: `已超（${amount}）`, amount, tone: 'red' }
   }
 
-  const remaining = Math.max(0, target - actual)
-  if (actual >= CALORIE_COMFORT_MIN) {
-    return { label: `余量（${remaining}）`, amount: remaining, tone: 'green' }
+  if (actual >= target) {
+    const amount = Math.max(0, CALORIE_HARD_CAP - actual)
+    return { label: `余量（${amount}）`, amount, tone: 'green' }
   }
 
-  return { label: `还需（${remaining}）`, amount: remaining, tone: 'blue' }
+  const amount = Math.max(0, target - actual)
+  return { label: `还需（${amount}）`, amount, tone: 'blue' }
 }
 
 export function computeDailyStatus(entries: FoodEntry[], targets: DailyTargets): DailyStatus {
@@ -73,8 +79,8 @@ export function computeDailyStatus(entries: FoodEntry[], targets: DailyTargets):
 
   const caloriesOk =
     hasEntries &&
-    totals.calories >= CALORIE_COMFORT_MIN &&
-    totals.calories <= targets.calories
+    totals.calories >= targets.calories &&
+    totals.calories <= CALORIE_HARD_CAP
 
   const proteinOk =
     hasEntries &&

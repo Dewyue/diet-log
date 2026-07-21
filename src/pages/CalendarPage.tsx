@@ -75,18 +75,18 @@ export default function CalendarPage() {
 
       <StatsSummary entries={entries} targets={targets} />
 
-      <div className="flex items-center justify-center gap-4 text-xs text-slate-400">
+      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-slate-400">
         <span className="flex items-center gap-1.5">
           <span className="h-2.5 w-2.5 rounded-sm bg-sky-100 ring-1 ring-sky-200 dark:bg-sky-500/40" />
-          还需
+          还需（&lt;目标）
         </span>
         <span className="flex items-center gap-1.5">
           <span className="h-2.5 w-2.5 rounded-sm bg-green-100 ring-1 ring-green-200 dark:bg-green-500/40" />
-          余量
+          余量（目标～1800）
         </span>
         <span className="flex items-center gap-1.5">
           <span className="h-2.5 w-2.5 rounded-sm bg-red-100 ring-1 ring-red-200 dark:bg-red-500/40" />
-          已超
+          已超（&gt;1800）
         </span>
       </div>
 

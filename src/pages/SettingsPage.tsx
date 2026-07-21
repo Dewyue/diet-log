@@ -140,6 +140,9 @@ export default function SettingsPage() {
 
       <section className="space-y-4 rounded-2xl bg-white p-4 dark:bg-[#1c1c1e]">
         <h2 className="text-[15px] font-semibold">每日目标</h2>
+        <p className="text-xs text-slate-400">
+          热量目标可改；超过固定上限 1800 kcal 会显示「已超」。
+        </p>
         <div className="grid grid-cols-2 gap-3">
           <TargetField
             label="热量"
