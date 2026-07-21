@@ -18,7 +18,7 @@ export default function TodayPage() {
   const [editEntry, setEditEntry] = useState<FoodEntry | null>(null)
 
   const timeline = useMemo(
-    () => [...entries].sort((a, b) => a.createdAt - b.createdAt),
+    () => [...entries].sort((a, b) => b.createdAt - a.createdAt),
     [entries],
   )
 

@@ -385,14 +385,10 @@ export function DaySheet({
   })
   const [editing, setEditing] = useState<FoodEntry | null>(editEntry ?? null)
 
-  const grouped = useMemo(() => {
-    const map = new Map<MealType, FoodEntry[]>()
-    for (const meal of MEAL_TYPES) map.set(meal, [])
-    for (const entry of entries) {
-      map.get(entry.meal)?.push(entry)
-    }
-    return map
-  }, [entries])
+  const timeline = useMemo(
+    () => [...entries].sort((a, b) => b.createdAt - a.createdAt),
+    [entries],
+  )
 
   const status = computeDailyStatus(entries, targets)
 
@@ -438,25 +434,21 @@ export function DaySheet({
               <DayProgress entries={entries} targets={targets} compact />
             )}
 
-            {MEAL_TYPES.map((meal) => {
-              const list = grouped.get(meal) ?? []
-              if (list.length === 0) return null
-              return (
-                <div key={meal} className="space-y-2">
-                  {list.map((record) => (
-                    <MealRecordItem
-                      key={record.id}
-                      record={record}
-                      onEdit={() => {
-                        setEditing(record)
-                        setMode('edit')
-                      }}
-                      onDelete={() => handleDelete(record.id)}
-                    />
-                  ))}
-                </div>
-              )
-            })}
+            {timeline.length > 0 && (
+              <div className="space-y-2">
+                {timeline.map((record) => (
+                  <MealRecordItem
+                    key={record.id}
+                    record={record}
+                    onEdit={() => {
+                      setEditing(record)
+                      setMode('edit')
+                    }}
+                    onDelete={() => handleDelete(record.id)}
+                  />
+                ))}
+              </div>
+            )}
 
             {entries.length === 0 && (
               <p className="py-8 text-center text-sm text-slate-400">
