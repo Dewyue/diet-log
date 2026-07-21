@@ -1,24 +1,6 @@
-import { useMemo } from 'react'
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts'
-import { computeDailyStatus, sumEntries } from '../lib/dailyStatus'
+import { computeDailyStatus } from '../lib/dailyStatus'
 import { groupByDate } from '../hooks/useEntries'
 import type { DailyTargets, FoodEntry } from '../types'
-
-interface StatsChartsProps {
-  entries: FoodEntry[]
-  targets: DailyTargets
-  year: number
-  month: number
-  expanded: boolean
-}
 
 export function StatsSummary({
   entries,
@@ -78,83 +60,6 @@ function StatCard({
         {value}
         <span className="ml-0.5 text-xs font-normal text-slate-400">{unit}</span>
       </p>
-    </div>
-  )
-}
-
-export default function StatsCharts({
-  entries,
-  targets,
-  year,
-  month,
-  expanded,
-}: StatsChartsProps) {
-  const caloriesTrend = useMemo(() => {
-    const lastDay = new Date(year, month, 0).getDate()
-    const daily: { day: string; calories: number; target: number }[] = []
-    for (let d = 1; d <= lastDay; d++) {
-      const date = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`
-      const dayEntries = entries.filter((e) => e.date === date)
-      if (dayEntries.length === 0) continue
-      daily.push({
-        day: `${d}日`,
-        calories: Math.round(sumEntries(dayEntries).calories),
-        target: targets.calories,
-      })
-    }
-    return daily
-  }, [entries, year, month, targets.calories])
-
-  if (!expanded) return null
-
-  const hasData = entries.length > 0
-
-  return (
-    <div className="space-y-4">
-      {!hasData && (
-        <p className="rounded-2xl bg-white/60 py-6 text-center text-sm text-slate-400 dark:bg-[#1c1c1e]/60">
-          本月暂无数据
-        </p>
-      )}
-
-      {caloriesTrend.length > 0 && (
-        <ChartCard title="热量趋势">
-          <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={caloriesTrend}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="day" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} width={36} />
-              <Tooltip />
-              <Line
-                type="monotone"
-                dataKey="calories"
-                stroke="#ff9500"
-                strokeWidth={2}
-                dot={{ r: 3 }}
-                name="热量"
-              />
-              <Line
-                type="monotone"
-                dataKey="target"
-                stroke="#8e8e93"
-                strokeWidth={1}
-                strokeDasharray="4 4"
-                dot={false}
-                name="目标"
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </ChartCard>
-      )}
-    </div>
-  )
-}
-
-function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-2xl border border-black/5 bg-white p-3 dark:border-white/10 dark:bg-[#1c1c1e]">
-      <h3 className="mb-2 text-sm font-medium text-slate-700 dark:text-slate-200">{title}</h3>
-      {children}
     </div>
   )
 }
