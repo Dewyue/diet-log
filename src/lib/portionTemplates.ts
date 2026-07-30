@@ -1,4 +1,4 @@
-/** One exchange portion ≈ 90 kcal (食物交换份). */
+/** One exchange portion ≈ 90 kcal (食物交换份). Labels are P:C:F ratios（蛋=蛋白）. */
 
 export interface PortionTemplate {
   id: string
@@ -14,67 +14,59 @@ export const PORTION_KCAL = 90
 
 export const PORTION_TEMPLATES: PortionTemplate[] = [
   {
-    id: 'pure-protein',
-    label: '纯蛋白',
+    id: 'egg-pure',
+    label: '蛋纯',
     hint: '鸡胸、虾、蛋白粉',
     protein: 22.5,
     carbs: 0,
     fat: 0,
   },
   {
-    id: 'lean-meat',
-    label: '瘦肉蛋',
+    id: 'egg2-fat1',
+    label: '蛋2脂1',
     hint: '鸡蛋、瘦牛肉、豆腐',
-    protein: 12,
+    protein: 10,
     carbs: 0,
     fat: 5,
   },
   {
-    id: 'staple-carb',
-    label: '主食碳水',
-    hint: '米饭、面条、馒头',
+    id: 'egg1-carb10',
+    label: '蛋1碳10',
+    hint: '米饭、面条、红薯、香蕉',
     protein: 2,
     carbs: 20,
     fat: 0,
   },
   {
-    id: 'starchy',
-    label: '淀粉果蔬',
-    hint: '红薯、香蕉、玉米',
-    protein: 1,
-    carbs: 21,
-    fat: 0,
-  },
-  {
-    id: 'veggie',
-    label: '纯蔬菜',
+    id: 'egg1-carb3',
+    label: '蛋1碳3',
     hint: '青菜、黄瓜、番茄',
     protein: 5,
-    carbs: 17,
+    carbs: 15,
     fat: 0,
   },
   {
-    id: 'dairy',
-    label: '奶类',
+    id: 'egg1-carb1-fat1',
+    label: '蛋1碳1脂1',
     hint: '牛奶、原味酸奶',
     protein: 5,
-    carbs: 7,
+    carbs: 5,
     fat: 5,
   },
   {
-    id: 'fat-nuts',
-    label: '坚果油脂',
+    id: 'egg1-carb1-fat4',
+    label: '蛋1碳1脂4',
     hint: '坚果、油、酱',
     protein: 2,
     carbs: 2,
     fat: 8,
   },
   {
-    id: 'balanced',
-    label: '均衡一份',
+    id: 'egg2-carb3-fat1',
+    label: '蛋2碳3脂1',
     hint: '简单套餐粗估',
-    protein: 7,
-    carbs: 10,
+    protein: 6,
+    carbs: 9,
     fat: 3,
   },
 ]
