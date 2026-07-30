@@ -46,8 +46,8 @@ export const PORTION_TEMPLATES: PortionTemplate[] = [
     fat: 0,
   },
   {
-    id: 'egg0-carb',
-    label: '蛋0碳',
+    id: 'pure-carb',
+    label: '纯碳',
     hint: '砂糖、果汁、甜品',
     protein: 0,
     carbs: 22.5,
