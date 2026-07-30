@@ -11,6 +11,8 @@ import { useEntriesByDate, useTargets } from '../hooks/useEntries'
 import {
   caloriesFromMacros,
   formatPortions,
+  inferTemplateFromEntry,
+  isAutoPortionName,
   PORTION_KCAL,
   PORTION_TEMPLATES,
   scaleTemplate,
@@ -40,10 +42,13 @@ interface EntryFormProps {
 }
 
 function EntryForm({ date, initial, onDone, onCancel }: EntryFormProps) {
+  const inferred = initial ? inferTemplateFromEntry(initial) : null
   const [meal, setMeal] = useState<MealType>(initial?.meal ?? guessMeal())
   const [name, setName] = useState(initial?.name ?? '')
-  const [templateId, setTemplateId] = useState<string | null>(null)
-  const [portions, setPortions] = useState(1)
+  const [templateId, setTemplateId] = useState<string | null>(
+    inferred?.template?.id ?? null,
+  )
+  const [portions, setPortions] = useState(inferred?.portions ?? 1)
   const [protein, setProtein] = useState(
     initial?.protein ? String(initial.protein) : '',
   )
@@ -67,15 +72,7 @@ function EntryForm({ date, initial, onDone, onCancel }: EntryFormProps) {
     setCarbs(String(scaled.carbs))
     setFat(String(scaled.fat))
     setName((prev) => {
-      if (initial?.name && prev === initial.name) return prev
-      const autoNames = new Set(
-        PORTION_TEMPLATES.flatMap((t) =>
-          [0.5, 1, 1.5, 2, 2.5, 3].map(
-            (n) => `${t.label} × ${formatPortions(n)}`,
-          ),
-        ),
-      )
-      if (!prev.trim() || autoNames.has(prev)) {
+      if (!prev.trim() || isAutoPortionName(prev)) {
         return `${template.label} × ${formatPortions(nextPortions)}`
       }
       return prev
@@ -86,8 +83,25 @@ function EntryForm({ date, initial, onDone, onCancel }: EntryFormProps) {
   const bumpPortions = (delta: number) => {
     const next = Math.round((portions + delta) * 10) / 10
     if (next < 0.5 || next > 12) return
-    if (selected) applyTemplate(selected, next)
-    else setPortions(next)
+    if (selected) {
+      applyTemplate(selected, next)
+      return
+    }
+    // Editing without a matched template: scale current macros by portion change
+    if (portions > 0 && (p > 0 || c > 0 || f > 0)) {
+      const factor = next / portions
+      setProtein(String(Math.round(p * factor * 10) / 10))
+      setCarbs(String(Math.round(c * factor * 10) / 10))
+      setFat(String(Math.round(f * factor * 10) / 10))
+      setName((prev) => {
+        if (!prev.trim() || isAutoPortionName(prev)) {
+          const base = prev.replace(/\s*×\s*[\d.]+$/, '').trim() || prev
+          return `${base} × ${formatPortions(next)}`
+        }
+        return prev
+      })
+    }
+    setPortions(next)
   }
 
   const handleSubmit = async () => {

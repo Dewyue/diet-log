@@ -30,12 +30,44 @@ export const PORTION_TEMPLATES: PortionTemplate[] = [
     fat: 5,
   },
   {
+    id: 'egg1-fat2',
+    label: '蛋1脂2',
+    hint: '五花、肥牛、红烧肉',
+    protein: 6,
+    carbs: 0,
+    fat: 7,
+  },
+  {
     id: 'egg1-carb10',
     label: '蛋1碳10',
     hint: '米饭、面条、红薯、香蕉',
     protein: 2,
     carbs: 20,
     fat: 0,
+  },
+  {
+    id: 'egg0-carb',
+    label: '蛋0碳',
+    hint: '砂糖、果汁、甜品',
+    protein: 0,
+    carbs: 22.5,
+    fat: 0,
+  },
+  {
+    id: 'egg1-carb2',
+    label: '蛋1碳2',
+    hint: '杂豆、全麦、豆制品',
+    protein: 7,
+    carbs: 14,
+    fat: 0,
+  },
+  {
+    id: 'egg1-carb2-fat2',
+    label: '蛋1碳2脂2',
+    hint: '油条、酥点、薯条',
+    protein: 3,
+    carbs: 6,
+    fat: 6,
   },
   {
     id: 'egg1-carb3',
@@ -89,4 +121,55 @@ export function scaleTemplate(template: PortionTemplate, portions: number) {
 
 export function formatPortions(n: number) {
   return Number.isInteger(n) ? String(n) : n.toFixed(1)
+}
+
+/** Names auto-filled as「模版 × 份数」 */
+export function isAutoPortionName(name: string) {
+  const trimmed = name.trim()
+  if (!trimmed) return false
+  return PORTION_TEMPLATES.some((t) => {
+    if (trimmed === t.label) return true
+    return trimmed.startsWith(`${t.label} × `) || trimmed.startsWith(`${t.label}×`)
+  })
+}
+
+/** Recover template + portions when editing a saved entry */
+export function inferTemplateFromEntry(entry: {
+  name: string
+  protein: number
+  carbs: number
+  fat: number
+}): { template: PortionTemplate | null; portions: number } {
+  const nameMatch = entry.name.trim().match(/^(.+?)\s*×\s*([\d.]+)$/)
+  if (nameMatch) {
+    const label = nameMatch[1].trim()
+    const portions = Math.round(Number(nameMatch[2]) * 10) / 10
+    const template = PORTION_TEMPLATES.find((t) => t.label === label)
+    if (template && portions >= 0.5 && portions <= 12) {
+      return { template, portions }
+    }
+  }
+
+  for (const template of PORTION_TEMPLATES) {
+    const ratios: number[] = []
+    if (template.protein > 0) ratios.push(entry.protein / template.protein)
+    if (template.carbs > 0) ratios.push(entry.carbs / template.carbs)
+    if (template.fat > 0) ratios.push(entry.fat / template.fat)
+    if (ratios.length === 0) continue
+
+    const avg = ratios.reduce((a, b) => a + b, 0) / ratios.length
+    const portions = Math.round(avg * 2) / 2
+    if (portions < 0.5 || portions > 12) continue
+
+    const scaled = scaleTemplate(template, portions)
+    if (
+      Math.abs(scaled.protein - entry.protein) <= 0.25 &&
+      Math.abs(scaled.carbs - entry.carbs) <= 0.25 &&
+      Math.abs(scaled.fat - entry.fat) <= 0.25
+    ) {
+      return { template, portions }
+    }
+  }
+
+  return { template: null, portions: 1 }
 }
