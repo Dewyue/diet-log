@@ -13,6 +13,7 @@ interface DayProgressProps {
 }
 
 const BADGE_TONE: Record<CalorieBadgeTone, string> = {
+  gray: 'bg-slate-200 text-slate-600 dark:bg-slate-500/30 dark:text-slate-300',
   blue: 'bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300',
   green: 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400',
   red: 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400',

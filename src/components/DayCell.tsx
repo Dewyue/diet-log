@@ -16,6 +16,7 @@ interface DayCellProps {
 }
 
 const TONE_BG: Record<CalorieBadgeTone, string> = {
+  gray: 'bg-slate-200 text-slate-600 dark:bg-slate-500/35 dark:text-slate-300',
   blue: 'bg-sky-100 text-sky-800 dark:bg-sky-500/25 dark:text-sky-200',
   green: 'bg-green-100 text-green-800 dark:bg-green-500/25 dark:text-green-200',
   red: 'bg-red-100 text-red-700 dark:bg-red-500/25 dark:text-red-200',

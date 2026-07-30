@@ -77,6 +77,10 @@ export default function CalendarPage() {
 
       <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-slate-400">
         <span className="flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-sm bg-slate-200 ring-1 ring-slate-300 dark:bg-slate-500/40" />
+          非常不足（&lt;1000）
+        </span>
+        <span className="flex items-center gap-1.5">
           <span className="h-2.5 w-2.5 rounded-sm bg-sky-100 ring-1 ring-sky-200 dark:bg-sky-500/40" />
           还需（&lt;目标）
         </span>

@@ -3,6 +3,9 @@ import type { DailyTargets, FoodEntry, MacroTotals, MealType } from '../types'
 /** Fixed hard ceiling for 已超 — not the editable daily target */
 export const CALORIE_HARD_CAP = 1800
 
+/** Below this → 非常不足（灰） */
+export const CALORIE_SEVERE_MIN = 1000
+
 export interface DailyStatus {
   onTrack: boolean
   hasEntries: boolean
@@ -16,7 +19,7 @@ export interface DailyStatus {
   gaps: string[]
 }
 
-export type CalorieBadgeTone = 'blue' | 'green' | 'red'
+export type CalorieBadgeTone = 'gray' | 'blue' | 'green' | 'red'
 
 export interface CalorieBadge {
   label: string
@@ -47,8 +50,9 @@ function macroCapOk(actual: number, target: number, enabled: boolean) {
 }
 
 /**
- * Zones (1800 is fixed):
- * - actual < target → 还需（浅蓝）
+ * Zones (1000 / 1800 fixed; target editable):
+ * - actual < 1000 → 非常不足（灰）
+ * - 1000 ≤ actual < target → 还需（浅蓝）
  * - target ≤ actual ≤ 1800 → 余量（绿）
  * - actual > 1800 → 已超（红）
  */
@@ -62,6 +66,11 @@ export function getCalorieBadge(
   if (actual > CALORIE_HARD_CAP) {
     const amount = actual - CALORIE_HARD_CAP
     return { label: `已超（${amount}）`, amount, tone: 'red' }
+  }
+
+  if (actual < CALORIE_SEVERE_MIN) {
+    const amount = Math.max(0, CALORIE_SEVERE_MIN - actual)
+    return { label: `非常不足（${amount}）`, amount, tone: 'gray' }
   }
 
   if (actual >= target) {
